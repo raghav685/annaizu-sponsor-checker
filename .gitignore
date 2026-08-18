@@ -32,9 +32,16 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
+
+# local dev database (embedded PGlite, file-backed) - never used in production
+/.pglite-data/
+
+# local dev snapshot storage fallback (production uses Vercel Blob)
+/.snapshots/
 
 # typescript
 *.tsbuildinfo

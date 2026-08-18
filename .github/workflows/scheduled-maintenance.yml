@@ -1,0 +1,47 @@
+name: Scheduled maintenance
+
+# Off-platform by design: this runs on GitHub's infrastructure, not Vercel's,
+# so it can detect Vercel Cron going silent (bad secret, quota, a deploy that
+# drops vercel.json) - a check that lived on Vercel couldn't see that failure.
+#
+# Repo secrets required (Settings -> Secrets and variables -> Actions):
+#   APP_URL       - e.g. https://your-app.vercel.app (no trailing slash)
+#   CRON_SECRET   - same value as the Vercel env var of the same name
+#   ALERT_WEBHOOK_URL - optional, same Slack incoming webhook used by alerts.ts,
+#                        for a Slack ping in addition to GitHub's own failure email
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  drain-companies-house-queue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/companies-house/process
+        run: |
+          curl -sf -X POST "${{ secrets.APP_URL }}/api/companies-house/process" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -o response.json
+          cat response.json
+
+  dead-mans-switch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /api/health (fails the job on non-200, e.g. no successful sync in 36h)
+        id: health
+        run: |
+          set +e
+          http_code=$(curl -s -o response.json -w "%{http_code}" "${{ secrets.APP_URL }}/api/health")
+          cat response.json
+          echo "http_code=$http_code" >> "$GITHUB_OUTPUT"
+          exit $([ "$http_code" = "200" ] && echo 0 || echo 1)
+      - name: Notify Slack on failure
+        if: failure() && env.ALERT_WEBHOOK_URL != ''
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          curl -sf -X POST "$ALERT_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"UK Sponsors Explorer: /api/health returned a non-200 status (dead-man's-switch). Check https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} and ${{ secrets.APP_URL }}/api/health\"}"

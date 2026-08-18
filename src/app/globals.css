@@ -1,187 +1,136 @@
 @import "tailwindcss";
 
+/*
+ * Token system - UK Licensed Sponsors Explorer
+ * Void/Slate/Steel/Signal/Ember/Mist, see DECISIONS.md / design pass for rationale.
+ * One theme (dark) for the whole page per design discipline - no light-mode section flips.
+ */
 :root {
-  /* Surfaces */
-  --color-bg: oklch(0.99 0.002 260);
-  --color-surface: oklch(0.97 0.004 260);
-  --color-surface-raised: oklch(1 0 0);
+  --color-void: #0a0d12;
+  --color-slate: #141b26;
+  --color-steel: #202b3d;
+  --color-signal: #4fe8c9;
+  --color-signal-dim: #2f8f7d;
+  --color-ember: #ff9b54;
+  --color-info: #5b9bf0;
+  --color-mist: #e8edf4;
+  --color-mist-dim: #9aa7b8;
+  --color-hairline: rgb(232 237 244 / 0.08);
+  --color-hairline-strong: rgb(232 237 244 / 0.16);
 
-  /* Text */
-  --color-ink: oklch(0.19 0.01 260);
-  --color-ink-muted: oklch(0.44 0.015 260);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 
-  /* Borders */
-  --color-border: oklch(0.89 0.006 260);
-  --color-border-strong: oklch(0.8 0.008 260);
-
-  /* Brand */
-  --color-brand: oklch(0.47 0.17 276);
-  --color-brand-strong: oklch(0.38 0.18 276);
-  --color-brand-soft: oklch(0.95 0.025 276);
-  --color-on-brand: oklch(0.99 0.01 276);
-
-  /* Rating semantics */
-  --color-rating-a: oklch(0.5 0.14 152);
-  --color-rating-a-soft: oklch(0.94 0.045 152);
-  --color-rating-b: oklch(0.47 0.13 55);
-  --color-rating-b-soft: oklch(0.94 0.05 65);
-  --color-rating-provisional: oklch(0.48 0.02 260);
-  --color-rating-provisional-soft: oklch(0.93 0.006 260);
-
-  --color-destructive: oklch(0.55 0.19 25);
-
-  /* Spacing (8px base) */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-
-  --container-max: 80rem;
-  --container-gutter: 1.25rem;
-
-  /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-
-  /* Motion */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --duration-micro: 180ms;
-  --duration-reveal: 500ms;
-  --duration-modal: 400ms;
-  --duration-counter: 1400ms;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: oklch(0.16 0.006 260);
-    --color-surface: oklch(0.2 0.008 260);
-    --color-surface-raised: oklch(0.23 0.01 260);
-
-    --color-ink: oklch(0.96 0.004 260);
-    --color-ink-muted: oklch(0.72 0.01 260);
-
-    --color-border: oklch(0.32 0.01 260);
-    --color-border-strong: oklch(0.42 0.012 260);
-
-    --color-brand: oklch(0.72 0.14 276);
-    --color-brand-strong: oklch(0.8 0.13 276);
-    --color-brand-soft: oklch(0.27 0.05 276);
-    --color-on-brand: oklch(0.15 0.02 276);
-
-    --color-rating-a: oklch(0.72 0.13 152);
-    --color-rating-a-soft: oklch(0.24 0.05 152);
-    --color-rating-b: oklch(0.72 0.12 55);
-    --color-rating-b-soft: oklch(0.26 0.05 65);
-    --color-rating-provisional: oklch(0.75 0.015 260);
-    --color-rating-provisional-soft: oklch(0.26 0.006 260);
-
-    --color-destructive: oklch(0.68 0.17 25);
-  }
+  --z-grid: 0;
+  --z-bg-motion: 1;
+  --z-particles: 2;
+  --z-content: 10;
+  --z-nav: 40;
+  --z-sidebar: 45;
+  --z-overlay: 60;
+  --z-grain: 70;
 }
 
 @theme inline {
-  --color-bg: var(--color-bg);
-  --color-surface: var(--color-surface);
-  --color-surface-raised: var(--color-surface-raised);
-  --color-ink: var(--color-ink);
-  --color-ink-muted: var(--color-ink-muted);
-  --color-border: var(--color-border);
-  --color-border-strong: var(--color-border-strong);
-  --color-brand: var(--color-brand);
-  --color-brand-strong: var(--color-brand-strong);
-  --color-brand-soft: var(--color-brand-soft);
-  --color-on-brand: var(--color-on-brand);
-  --color-rating-a: var(--color-rating-a);
-  --color-rating-a-soft: var(--color-rating-a-soft);
-  --color-rating-b: var(--color-rating-b);
-  --color-rating-b-soft: var(--color-rating-b-soft);
-  --color-rating-provisional: var(--color-rating-provisional);
-  --color-rating-provisional-soft: var(--color-rating-provisional-soft);
-  --color-destructive: var(--color-destructive);
+  --color-void: var(--color-void);
+  --color-slate: var(--color-slate);
+  --color-steel: var(--color-steel);
+  --color-signal: var(--color-signal);
+  --color-signal-dim: var(--color-signal-dim);
+  --color-ember: var(--color-ember);
+  --color-info: var(--color-info);
+  --color-mist: var(--color-mist);
+  --color-mist-dim: var(--color-mist-dim);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
 
-  --font-display: var(--font-space-grotesk), Arial, sans-serif;
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+* {
+  border-color: var(--color-hairline);
+}
 
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+html {
+  color-scheme: dark;
+  scrollbar-color: var(--color-steel) transparent;
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-}
-
-h1, h2, h3, .font-display {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-}
-
-.prose-measure {
-  /* Tighter than the nominal 68ch: Inter renders narrower than the "0"
-     glyph the ch unit is based on, so 68ch was measuring ~86 real
-     characters/line in practice. 60ch keeps real rendered length under 80. */
-  max-width: 60ch;
-  text-wrap: pretty;
-}
-
-.tabular {
-  font-variant-numeric: tabular-nums;
+  background: var(--color-void);
+  color: var(--color-mist);
 }
 
 ::selection {
-  background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
+  background: var(--color-signal);
+  color: var(--color-void);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--color-signal);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 
-@keyframes slide-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+.font-display {
+  font-family: var(--font-display);
+}
+.font-mono {
+  font-family: var(--font-mono);
+}
+.font-body {
+  font-family: var(--font-body);
 }
 
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+.glass-noise {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/></svg>");
+  mix-blend-mode: overlay;
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
+@keyframes flow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  to {
-    opacity: 1;
+  50% {
+    transform: translate3d(-2%, 2%, 0) scale(1.05);
   }
+}
+.animate-flow-drift {
+  animation: flow-drift 40s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.split-line-mask {
+  overflow: hidden;
+  display: block;
+  padding-bottom: 0.08em;
+}
+.split-line-mask > div {
+  will-change: transform, opacity;
+}
+
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 1rem;
+  z-index: var(--z-overlay);
+  background: var(--color-signal);
+  color: var(--color-void);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+.skip-link:focus {
+  top: 1rem;
 }

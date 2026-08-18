@@ -1,0 +1,437 @@
+/**
+ * Shared server-side queries backing every page/route that used to read
+ * public/data/*.json. Nothing here reads from disk - it's all live DB state,
+ * so every figure traces back to a sync run.
+ */
+import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
+import { db } from "@/db/client";
+import { sponsors, sponsorRoutes, sponsorEvents, syncRuns } from "@/db/schema";
+import type { Sponsor, Stats, Meta, Region, Sector, Rating, SponsorType } from "./types";
+import { ALL_REGIONS } from "./constants";
+import { slugify } from "./slug";
+
+interface RouteRow {
+  route: string;
+  rating: "A" | "B" | null;
+  sponsorType: "Worker" | "Temporary Worker";
+}
+
+function deriveRating(ratings: Array<"A" | "B">): Rating {
+  const unique = Array.from(new Set(ratings));
+  if (unique.length === 2) return "A & B";
+  if (unique.length === 1) return unique[0];
+  return "Unrated";
+}
+
+function deriveSponsorType(types: Set<"Worker" | "Temporary Worker">): SponsorType {
+  if (types.size === 2) return "Both";
+  return (Array.from(types)[0] as SponsorType) ?? "Worker";
+}
+
+type SponsorRow = typeof sponsors.$inferSelect;
+
+/**
+ * Attaches current routes to a set of sponsor rows and maps to the shape the
+ * frontend has always consumed. `id` here is the stable `slug` (not the DB
+ * uuid) - that's what /sponsor/[slug] and every existing component already
+ * expect as an opaque identifier/URL segment. Shared by every loader below so
+ * "active sponsors", "sponsors in a city", "sponsors on a route" etc. never
+ * drift into slightly different shapes.
+ */
+// Above this many rows, an `inArray(...)` filter on sponsor id would build a WHERE IN
+// with one entry per row - large enough (the full ~127k active set, or a single
+// dominant route like "Skilled Worker") to blow the query builder's call stack.
+// Past the threshold it's cheaper and safer to just load every current route.
+const INARRAY_ROW_LIMIT = 5000;
+
+async function hydrateSponsorRows(rows: SponsorRow[]): Promise<Sponsor[]> {
+  if (rows.length === 0) return [];
+  const currentRoutes = await db
+    .select()
+    .from(sponsorRoutes)
+    .where(
+      rows.length > INARRAY_ROW_LIMIT
+        ? eq(sponsorRoutes.isCurrent, true)
+        : and(eq(sponsorRoutes.isCurrent, true), inArray(sponsorRoutes.sponsorId, rows.map((r) => r.id)))
+    );
+
+  const routesBySponsorId = new Map<string, RouteRow[]>();
+  for (const r of currentRoutes) {
+    const list = routesBySponsorId.get(r.sponsorId) ?? [];
+    list.push({ route: r.route, rating: r.rating as "A" | "B" | null, sponsorType: r.sponsorType as "Worker" | "Temporary Worker" });
+    routesBySponsorId.set(r.sponsorId, list);
+  }
+
+  return rows.map((s) => {
+    const routes = routesBySponsorId.get(s.id) ?? [];
+    const ratings = routes.map((r) => r.rating).filter((r): r is "A" | "B" => r !== null);
+    const sponsorTypeSet = new Set(routes.map((r) => r.sponsorType));
+    return {
+      id: s.slug,
+      name: s.displayName,
+      town: s.town,
+      county: s.county,
+      region: s.region as Region,
+      sector: s.sector as Sector,
+      routes: routes.map((r) => r.route),
+      routeCount: routes.length,
+      ratings,
+      rating: deriveRating(ratings),
+      sponsorType: deriveSponsorType(sponsorTypeSet),
+      firstSeenAt: new Date(s.firstSeenAt).toISOString(),
+      status: s.status === "active" ? "active" : "removed",
+    };
+  });
+}
+
+/** The full set of active sponsors - see hydrateSponsorRows for the shape. */
+export async function loadActiveSponsorsForFrontend(): Promise<Sponsor[]> {
+  const activeSponsors = await db.select().from(sponsors).where(eq(sponsors.status, "active"));
+  return hydrateSponsorRows(activeSponsors);
+}
+
+/**
+ * Sponsors no longer on the register (status != active) - always empty today, since the
+ * baseline sync has nothing to remove anything against yet. Kept separate from the active
+ * loader/store rather than blended in, so the site's core stats and filters stay exactly
+ * "active sponsors only" and this can be wired up for real once removals start accruing.
+ */
+export async function loadRemovedSponsorsForFrontend(): Promise<Sponsor[]> {
+  const removed = await db.select().from(sponsors).where(ne(sponsors.status, "active"));
+  return hydrateSponsorRows(removed);
+}
+
+export async function loadSponsorsByCity(city: string): Promise<Sponsor[]> {
+  const rows = await db
+    .select()
+    .from(sponsors)
+    .where(and(eq(sponsors.town, city), eq(sponsors.status, "active")));
+  return hydrateSponsorRows(rows);
+}
+
+export async function loadSponsorsBySector(sector: string): Promise<Sponsor[]> {
+  const rows = await db
+    .select()
+    .from(sponsors)
+    .where(and(eq(sponsors.sector, sector), eq(sponsors.status, "active")));
+  return hydrateSponsorRows(rows);
+}
+
+export async function loadSponsorsByRoute(route: string): Promise<Sponsor[]> {
+  const rows = await db
+    .select({ sponsor: sponsors })
+    .from(sponsorRoutes)
+    .innerJoin(sponsors, eq(sponsorRoutes.sponsorId, sponsors.id))
+    .where(and(eq(sponsorRoutes.route, route), eq(sponsorRoutes.isCurrent, true), eq(sponsors.status, "active")));
+  return hydrateSponsorRows(rows.map((r) => r.sponsor));
+}
+
+export interface BrowseIndexEntry {
+  slug: string;
+  name: string;
+  count: number;
+}
+
+/**
+ * Counts backing the /browse hub and each index page's generateStaticParams -
+ * direct GROUP BY aggregates rather than loading all ~127k active sponsors,
+ * since this also runs once per city/sector/route at build time.
+ */
+export async function loadBrowseIndex(): Promise<{
+  cities: BrowseIndexEntry[];
+  sectors: BrowseIndexEntry[];
+  routes: BrowseIndexEntry[];
+}> {
+  const [cityRows, sectorRows, routeRows] = await Promise.all([
+    db.select({ name: sponsors.town, count: count() }).from(sponsors).where(eq(sponsors.status, "active")).groupBy(sponsors.town),
+    db.select({ name: sponsors.sector, count: count() }).from(sponsors).where(eq(sponsors.status, "active")).groupBy(sponsors.sector),
+    db
+      .select({ name: sponsorRoutes.route, count: count() })
+      .from(sponsorRoutes)
+      .innerJoin(sponsors, eq(sponsorRoutes.sponsorId, sponsors.id))
+      .where(and(eq(sponsorRoutes.isCurrent, true), eq(sponsors.status, "active")))
+      .groupBy(sponsorRoutes.route),
+  ]);
+
+  const toEntries = (rows: { name: string; count: number }[]): BrowseIndexEntry[] =>
+    rows.map((r) => ({ slug: slugify(r.name), name: r.name, count: r.count })).sort((a, b) => b.count - a.count);
+
+  return { cities: toEntries(cityRows), sectors: toEntries(sectorRows), routes: toEntries(routeRows) };
+}
+
+export interface TownCoverageRow {
+  town: string;
+  region: string;
+  sector: string;
+  count: number;
+}
+
+/**
+ * Fine-grained (town, region, sector) counts for the /map coverage page -
+ * shipped to the client as one flat table so region/sector filtering there
+ * is a cheap client-side reduce rather than a round-trip per filter change.
+ */
+export async function loadTownCoverage(): Promise<TownCoverageRow[]> {
+  return db
+    .select({ town: sponsors.town, region: sponsors.region, sector: sponsors.sector, count: count() })
+    .from(sponsors)
+    .where(eq(sponsors.status, "active"))
+    .groupBy(sponsors.town, sponsors.region, sponsors.sector);
+}
+
+export interface KpiSummary {
+  activeCount: number;
+  historyBeginsAt: string | null;
+  latestPublish: {
+    registerDate: string | null;
+    finishedAt: string | null;
+    addedCount: number;
+    removedCount: number;
+    updatedCount: number;
+  } | null;
+}
+
+/**
+ * Per DECISIONS.md "KPI tiles / history charts: no withdrawn/closed split
+ * until Companies House lands" - callers must render `removedCount` as a
+ * single "removed from register" figure, never split or labelled "revoked".
+ */
+export async function loadKpiSummary(): Promise<KpiSummary> {
+  const [{ activeCount }] = await db.select({ activeCount: count() }).from(sponsors).where(eq(sponsors.status, "active"));
+
+  const [latestPublish, earliestRun] = await Promise.all([
+    db.query.syncRuns.findFirst({
+      where: (t, { inArray: inArr }) => inArr(t.status, ["success", "no_change"]),
+      orderBy: [desc(syncRuns.startedAt)],
+    }),
+    db.query.syncRuns.findFirst({
+      where: (t, { inArray: inArr }) => inArr(t.status, ["success", "no_change"]),
+      orderBy: [asc(syncRuns.startedAt)],
+    }),
+  ]);
+
+  return {
+    activeCount,
+    historyBeginsAt: earliestRun?.startedAt ? new Date(earliestRun.startedAt).toISOString() : null,
+    latestPublish: latestPublish
+      ? {
+          registerDate: latestPublish.registerPublicUpdatedAt ? new Date(latestPublish.registerPublicUpdatedAt).toISOString() : null,
+          finishedAt: latestPublish.finishedAt ? new Date(latestPublish.finishedAt).toISOString() : null,
+          addedCount: latestPublish.sponsorsAddedCount ?? 0,
+          removedCount: latestPublish.sponsorsRemovedCount ?? 0,
+          updatedCount: latestPublish.sponsorsUpdatedCount ?? 0,
+        }
+      : null,
+  };
+}
+
+export interface PublishTrendPoint {
+  date: string;
+  addedCount: number;
+  removedCount: number;
+  activeCountAfter: number;
+}
+
+/**
+ * One point per successful/no-change publish, oldest first - the raw material for the
+ * /#console analytics charts. `activeCountAfter` is derived (sponsorsActiveBefore + added -
+ * removed) rather than stored, since sync_runs never recorded a post-publish snapshot count.
+ * With only a handful of real publishes so far this is intentionally sparse - callers must
+ * render exactly what's here, never interpolate or backfill a smoother-looking curve.
+ */
+export async function loadPublishTrend(): Promise<PublishTrendPoint[]> {
+  const rows = await db.query.syncRuns.findMany({
+    where: (t, { inArray: inArr }) => inArr(t.status, ["success", "no_change"]),
+    orderBy: [asc(syncRuns.startedAt)],
+  });
+
+  return rows
+    .filter((r) => r.registerPublicUpdatedAt && r.sponsorsActiveBefore !== null)
+    .map((r) => ({
+      date: new Date(r.registerPublicUpdatedAt as Date).toISOString().slice(0, 10),
+      addedCount: r.sponsorsAddedCount ?? 0,
+      removedCount: r.sponsorsRemovedCount ?? 0,
+      activeCountAfter: (r.sponsorsActiveBefore ?? 0) + (r.sponsorsAddedCount ?? 0) - (r.sponsorsRemovedCount ?? 0),
+    }));
+}
+
+export interface SyncRunSummary {
+  id: number;
+  status: string;
+  registerDate: string | null;
+  finishedAt: string | null;
+  rowCount: number | null;
+  addedCount: number | null;
+  removedCount: number | null;
+  updatedCount: number | null;
+  removalRatio: number | null;
+}
+
+/** Publish history for the /changelog page - every completed or halted run, newest first. */
+export async function loadSyncRunHistory(limit = 60): Promise<SyncRunSummary[]> {
+  const rows = await db.query.syncRuns.findMany({
+    where: (t, { inArray: inArr }) => inArr(t.status, ["success", "no_change", "halted_for_review"]),
+    orderBy: [desc(syncRuns.startedAt)],
+    limit,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    registerDate: r.registerPublicUpdatedAt ? new Date(r.registerPublicUpdatedAt).toISOString() : null,
+    finishedAt: r.finishedAt ? new Date(r.finishedAt).toISOString() : null,
+    rowCount: r.rowCount,
+    addedCount: r.sponsorsAddedCount,
+    removedCount: r.sponsorsRemovedCount,
+    updatedCount: r.sponsorsUpdatedCount,
+    removalRatio:
+      r.status === "halted_for_review" && r.haltSummary !== null && typeof r.haltSummary === "object" && "removalRatio" in r.haltSummary
+        ? Number((r.haltSummary as { removalRatio: unknown }).removalRatio)
+        : null,
+  }));
+}
+
+export interface ChangelogEvent {
+  id: number;
+  eventType: string;
+  occurredAt: string;
+  route: string | null;
+  before: unknown;
+  after: unknown;
+  sponsorName: string;
+  sponsorSlug: string;
+  sponsorTown: string;
+  sponsorIsActive: boolean;
+}
+
+/**
+ * Paginated diff-event feed for /changelog. Joined against `sponsors` for
+ * display, but the event log itself (not the mutable sponsors row) is the
+ * source of truth per sponsor_events' own schema comment.
+ */
+export async function loadRecentEvents(limit = 40, offset = 0): Promise<{ events: ChangelogEvent[]; total: number }> {
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: sponsorEvents.id,
+        eventType: sponsorEvents.eventType,
+        occurredAt: sponsorEvents.occurredAt,
+        route: sponsorEvents.route,
+        before: sponsorEvents.before,
+        after: sponsorEvents.after,
+        sponsorName: sponsors.displayName,
+        sponsorSlug: sponsors.slug,
+        sponsorTown: sponsors.town,
+        sponsorStatus: sponsors.status,
+      })
+      .from(sponsorEvents)
+      .innerJoin(sponsors, eq(sponsorEvents.sponsorId, sponsors.id))
+      .orderBy(desc(sponsorEvents.occurredAt), desc(sponsorEvents.id))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(sponsorEvents),
+  ]);
+
+  return {
+    events: rows.map((r) => ({
+      id: r.id,
+      eventType: r.eventType,
+      occurredAt: new Date(r.occurredAt).toISOString(),
+      route: r.route,
+      before: r.before,
+      after: r.after,
+      sponsorName: r.sponsorName,
+      sponsorSlug: r.sponsorSlug,
+      sponsorTown: r.sponsorTown,
+      sponsorIsActive: r.sponsorStatus === "active",
+    })),
+    total,
+  };
+}
+
+export function buildStatsFromSponsors(sponsorList: Sponsor[]): Stats {
+  const countBy = (values: string[]): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const v of values) out[v] = (out[v] ?? 0) + 1;
+    return out;
+  };
+
+  const byRegion = countBy(sponsorList.map((s) => s.region));
+  const bySector = countBy(sponsorList.map((s) => s.sector));
+  const byRating = countBy(sponsorList.map((s) => s.rating));
+  const bySponsorType = countBy(sponsorList.map((s) => s.sponsorType));
+  const byRoute = countBy(sponsorList.flatMap((s) => s.routes));
+
+  const townCounts = new Map<string, number>();
+  const countyCounts = new Map<string, number>();
+  for (const s of sponsorList) {
+    if (s.town) townCounts.set(s.town, (townCounts.get(s.town) ?? 0) + 1);
+    if (s.county) countyCounts.set(s.county, (countyCounts.get(s.county) ?? 0) + 1);
+  }
+  const top = (m: Map<string, number>, n: number) =>
+    Array.from(m.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, n)
+      .map(([name, count]) => ({ name, count }));
+
+  const abByRegion: Stats["abByRegion"] = {};
+  for (const region of ALL_REGIONS) abByRegion[region] = { a: 0, b: 0, both: 0, unrated: 0 };
+  for (const s of sponsorList) {
+    const bucket = abByRegion[s.region] ?? (abByRegion[s.region] = { a: 0, b: 0, both: 0, unrated: 0 });
+    if (s.rating === "A") bucket.a++;
+    else if (s.rating === "B") bucket.b++;
+    else if (s.rating === "A & B") bucket.both++;
+    else bucket.unrated++;
+  }
+
+  const routeBySector: Stats["routeBySector"] = {};
+  for (const s of sponsorList) {
+    routeBySector[s.sector] ??= {};
+    for (const r of s.routes) routeBySector[s.sector][r] = (routeBySector[s.sector][r] ?? 0) + 1;
+  }
+
+  const routesPerSponsorHistogram: Record<string, number> = {};
+  for (const s of sponsorList) {
+    routesPerSponsorHistogram[s.routeCount] = (routesPerSponsorHistogram[s.routeCount] ?? 0) + 1;
+  }
+
+  return {
+    totalSponsors: sponsorList.length,
+    totalLicences: sponsorList.reduce((sum, s) => sum + s.routeCount, 0),
+    byRegion,
+    bySector,
+    byRoute,
+    byRating,
+    bySponsorType,
+    topTowns: top(townCounts, 25),
+    topCounties: top(countyCounts, 25),
+    abByRegion,
+    routeBySector,
+    routesPerSponsorHistogram,
+  };
+}
+
+export async function loadMetaForFrontend(): Promise<Meta> {
+  const lastRun = await db.query.syncRuns.findFirst({
+    where: (t, { inArray: inArr }) => inArr(t.status, ["success", "no_change"]),
+    orderBy: [desc(syncRuns.startedAt)],
+  });
+
+  const [{ activeCount }] = await db.select({ activeCount: count() }).from(sponsors).where(eq(sponsors.status, "active"));
+  const [{ unknownRegionCount }] = await db
+    .select({ unknownRegionCount: count() })
+    .from(sponsors)
+    .where(and(eq(sponsors.status, "active"), eq(sponsors.region, "Unknown")));
+
+  return {
+    sourceUrl: "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers",
+    csvUrl: lastRun?.csvUrl ?? "",
+    csvFilename: lastRun?.csvFilename ?? "",
+    govUkLastUpdated: lastRun?.registerPublicUpdatedAt
+      ? new Date(lastRun.registerPublicUpdatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+      : "",
+    rawRowCount: lastRun?.rowCount ?? 0,
+    sponsorCount: activeCount,
+    unknownRegionCount,
+    pipelineRunAt: lastRun?.finishedAt ? new Date(lastRun.finishedAt).toISOString() : "",
+  };
+}

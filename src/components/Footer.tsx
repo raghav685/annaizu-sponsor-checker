@@ -1,62 +1,26 @@
 "use client";
 
-import { useStats } from "@/hooks/useStats";
-import { formatSponsorDate } from "@/lib/format";
-import { AnnaizuWordmark } from "./AnnaizuMark";
-import { ExternalLink } from "@/lib/icons";
+import { useExplorerStore } from "@/lib/store";
 
 export function Footer() {
-  const stats = useStats();
+  const meta = useExplorerStore((s) => s.meta);
 
   return (
-    <footer className="mt-auto border-t border-border bg-surface">
-      <div className="mx-auto flex w-full max-w-[var(--container-max)] flex-col gap-8 px-5 py-12 md:px-8">
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row">
-          <AnnaizuWordmark />
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-muted">
-            <a href="#checker" className="hover:text-ink">
-              Check a sponsor
-            </a>
-            <a href="#learn" className="hover:text-ink">
-              About licences
-            </a>
-            <a href="#faq" className="hover:text-ink">
-              FAQ
-            </a>
-          </nav>
-        </div>
-
-        <div className="prose-measure flex flex-col gap-3 border-t border-border pt-6 text-sm text-ink-muted">
-          {stats?.isSample && (
-            <p className="rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-2 text-ink">
-              This preview is running on a small sample dataset, not the full
-              live register.
-            </p>
-          )}
-          <p>
-            Sponsor data is sourced from the UK Home Office&apos;s public{" "}
-            <a
-              href={stats?.sourcePublicationUrl ?? "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-ink underline hover:text-brand"
-            >
-              Register of Licensed Sponsors
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-            </a>
-            , published and updated periodically by the Home Office.
-            {stats?.generatedAt && (
-              <> This copy was last refreshed on {formatSponsorDate(stats.generatedAt)}.</>
-            )}
-          </p>
-          <p>
-            Annaizu is an independent tool and is not affiliated with, endorsed
-            by, or acting on behalf of the Home Office or any part of the UK
-            government. Information is provided for general reference only and
-            does not constitute legal or immigration advice.
-          </p>
-          <p>© {new Date().getFullYear()} Annaizu. All rights reserved.</p>
-        </div>
+    <footer className="relative z-content border-t border-hairline bg-void px-6 py-10 lg:px-16">
+      <div className="mx-auto max-w-4xl space-y-3 font-mono text-xs leading-relaxed text-mist-dim">
+        <p>
+          Data source:{" "}
+          <a href={meta?.sourceUrl ?? "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers"} className="text-signal hover:underline" target="_blank" rel="noopener noreferrer">
+            GOV.UK register of licensed sponsors
+          </a>{" "}
+          (Home Office / UK Visas and Immigration){meta ? `, last updated ${meta.govUkLastUpdated}` : ""}.
+        </p>
+        <p>Contains public sector information licensed under the Open Government Licence v3.0.</p>
+        <p>
+          This is an unofficial mirror, not a Home Office service. Always verify current status on GOV.UK. A
+          licence does not mean an employer is hiring or will sponsor you. Sector labels are inferred from
+          organisation names and are not official data.
+        </p>
       </div>
     </footer>
   );
