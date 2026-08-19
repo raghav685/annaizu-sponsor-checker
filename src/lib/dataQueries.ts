@@ -80,7 +80,7 @@ async function hydrateSponsorRows(rows: SponsorRow[]): Promise<Sponsor[]> {
       rating: deriveRating(ratings),
       sponsorType: deriveSponsorType(sponsorTypeSet),
       firstSeenAt: new Date(s.firstSeenAt).toISOString(),
-      status: s.status === "active" ? "active" : "removed",
+      status: s.status,
       website: s.website,
       linkedin: s.linkedin,
     };

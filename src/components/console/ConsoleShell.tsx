@@ -15,7 +15,9 @@ import type { KpiSummary, PublishTrendPoint } from "@/lib/dataQueries";
 
 const STATUS_TABS = [
   { key: "active", label: "Active" },
-  { key: "revoked", label: "Removed" },
+  { key: "withdrawn", label: "Withdrawn" },
+  { key: "closed", label: "Closed" },
+  { key: "unknown", label: "Unclassified" },
 ] as const;
 
 export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: PublishTrendPoint[] }) {
@@ -75,7 +77,7 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[1fr_420px]">
           <div className="min-h-[32rem] xl:h-[calc(100dvh-11rem)]">
-            {statusTab === "revoked" ? <RemovedSponsorsPanel /> : <ResultsGrid />}
+            {statusTab === "active" ? <ResultsGrid /> : <RemovedSponsorsPanel status={statusTab} />}
           </div>
           <div className="xl:h-[calc(100dvh-11rem)] xl:overflow-y-auto xl:pr-1">
             <ChartsPanel />

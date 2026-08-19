@@ -3,6 +3,10 @@
     {
       "path": "/api/sync/trigger",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/companies-house/process",
+      "schedule": "20 6 * * *"
     }
   ]
 }

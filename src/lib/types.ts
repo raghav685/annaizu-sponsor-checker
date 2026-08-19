@@ -47,9 +47,10 @@ export interface Sponsor {
   sponsorType: SponsorType;
   /** ISO date this sponsor first appeared on the register (per firstSeenAt in the DB). */
   firstSeenAt: string;
-  /** Always "active" today - loadActiveSponsorsForFrontend only ever returns active sponsors.
-   *  Exists so the results table's Status column and future removed-sponsor views share one shape. */
-  status: "active" | "removed";
+  /** "withdrawn"/"closed" only ever come from a confident Companies House match (see
+   *  classifyCompanyStatus) - "unknown" means removed from the register but not yet
+   *  classified, never a guess at which bucket it belongs in. */
+  status: "active" | "withdrawn" | "closed" | "unknown";
   /** Verified official links only - null means "not yet looked up," never a guessed/search URL. */
   website: string | null;
   linkedin: string | null;
