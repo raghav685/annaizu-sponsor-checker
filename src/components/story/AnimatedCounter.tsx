@@ -39,9 +39,14 @@ export function AnimatedCounter({
     };
   }, [value, reduced, suffix, triggerOnMount]);
 
+  // Static markup shows the real final value, not "0" - a crawler or anyone
+  // without JS must see the actual number. The count-up animation (above)
+  // still runs for real users on mount, purely as a visual flourish; it
+  // doesn't depend on what this initial text was.
   return (
     <span ref={ref} className={className}>
-      0{suffix}
+      {value.toLocaleString()}
+      {suffix}
     </span>
   );
 }

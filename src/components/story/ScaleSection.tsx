@@ -14,7 +14,9 @@ function Stat({ label, value, suffix = "" }: { label: string; value: number; suf
     // between numbers stays the same fixed width regardless of digit count.
     <div ref={ref} className="min-w-[7ch] basis-[calc(50%-1.5rem)] sm:basis-[calc(33.333%-2rem)] lg:basis-auto">
       <div className="font-display text-[clamp(1.6rem,4.8vw,4rem)] font-semibold leading-none text-mist">
-        {inView ? <AnimatedCounter value={value} suffix={suffix} /> : "0" + suffix}
+        {/* Always rendered (real value in the static markup either way) - only
+            the count-up flourish itself waits for scroll-into-view. */}
+        <AnimatedCounter value={value} suffix={suffix} triggerOnMount={inView} />
       </div>
       <p className="mt-3 font-mono text-xs uppercase tracking-[0.12em] text-mist-dim">{label}</p>
     </div>
