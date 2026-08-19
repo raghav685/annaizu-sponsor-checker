@@ -28,14 +28,26 @@ export default async function Image() {
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", fontSize: 28, color: "#9aa7b8", letterSpacing: 2 }}>
-          UK SPONSORS REGISTER
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              width: 34,
+              height: 30,
+              background: "linear-gradient(135deg, #c3d456 0%, #4f9552 55%, #e68741 100%)",
+              clipPath: "polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)",
+            }}
+          />
+          <div style={{ display: "flex", fontSize: 26, fontWeight: 700, letterSpacing: 1 }}>annaizu</div>
         </div>
-        <div style={{ display: "flex", fontSize: 64, fontWeight: 700, marginTop: 24, lineHeight: 1.1 }}>
-          Every company Britain trusts to sponsor a visa.
+        <div style={{ display: "flex", fontSize: 26, color: "#9aa7b8", letterSpacing: 2, marginTop: 36 }}>
+          SPONSOR CHECKER
         </div>
-        <div style={{ display: "flex", fontSize: 32, color: "#4fe8c9", marginTop: 32 }}>
-          {totalSponsors} sponsors, live from GOV.UK
+        <div style={{ display: "flex", fontSize: 58, fontWeight: 700, marginTop: 20, lineHeight: 1.15 }}>
+          Check any UK employer&apos;s sponsor licence status in seconds.
+        </div>
+        <div style={{ display: "flex", fontSize: 30, color: "#4fe8c9", marginTop: 32 }}>
+          {totalSponsors} sponsors, synced daily from GOV.UK
         </div>
       </div>
     ),

@@ -8,13 +8,14 @@ import { useExplorerStore } from "@/lib/store";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useInView } from "@/hooks/useInView";
 import { RevealHeadline } from "./RevealHeadline";
+import type { Stats } from "@/lib/types";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const LicenceField = dynamic(() => import("./LicenceField").then((m) => m.LicenceField), { ssr: false });
 
-export function GeographySection() {
-  const stats = useExplorerStore((s) => s.globalStats);
+export function GeographySection({ initialStats }: { initialStats: Stats | null }) {
+  const stats = useExplorerStore((s) => s.globalStats) ?? initialStats;
   const reduced = useReducedMotion();
   const listRef = useRef<HTMLDivElement>(null);
 

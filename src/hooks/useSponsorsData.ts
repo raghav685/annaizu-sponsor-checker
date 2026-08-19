@@ -12,7 +12,7 @@ function idle(cb: () => void) {
   }
 }
 
-export function useSponsorsData() {
+export function useSponsorsData({ loadSponsors = true }: { loadSponsors?: boolean } = {}) {
   const setMeta = useExplorerStore((s) => s.setMeta);
   const setGlobalStats = useExplorerStore((s) => s.setGlobalStats);
   const setSponsors = useExplorerStore((s) => s.setSponsors);
@@ -30,7 +30,9 @@ export function useSponsorsData() {
       })
       .catch((err) => console.error("Failed to load meta/stats", err));
 
-    // The full register (~30MB) is never shipped in the first paint - defer it.
+    // The full register (~30MB) is never shipped in the first paint, and pages
+    // that never render a per-sponsor list (the homepage story) skip it entirely.
+    if (!loadSponsors) return;
     idle(() => {
       fetch("/api/data/sponsors")
         .then((r) => r.json() as Promise<Sponsor[]>)
@@ -41,7 +43,7 @@ export function useSponsorsData() {
         .catch((err) => console.error("Failed to load sponsors", err));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadSponsors]);
 
   return { heavyDataLoaded };
 }

@@ -74,6 +74,20 @@ this, once built (no such UI exists yet):
 Not yet done because no KPI tile or changelog page exists yet - tracked here so the wording isn't
 decided ad hoc when one finally gets built.
 
+## Reversal: Website/LinkedIn links (2026-08)
+`SponsorLinks.tsx` originally shipped with a documented, deliberate decision to use only
+Google/LinkedIn *search* links, never a direct URL - reasoning at the time: "the register
+doesn't include a website or LinkedIn URL for any sponsor, and we have no other source that
+reliably maps a name to one... a wrong direct link would look like our claim." That reasoning
+still holds in general - this reversal doesn't contradict it, it removes the premise: `sponsors`
+now has nullable `website`/`linkedin`/`linksCheckedAt`/`linksSource` columns, populated only by
+a verified lookup (manual research pass for an initial top-~500-by-route-count seed, written via
+`scripts/seedSponsorLinks.ts`; a `pickBatch`-style queue mirroring
+`src/lib/companiesHouse/processQueue.ts` extends coverage later). Per explicit instruction, the
+UI must never fall back to a search link when a sponsor has no verified URL - the icon is simply
+omitted. Null continues to mean "no confident match yet," exactly as intended by the original
+decision; only the *positive* case (a confirmed match exists) is new.
+
 ## HARD PREREQUISITE: a snapshot-replay tool is required before ever changing buildMatchKey()
 Confirmed with the user that rebuilding sponsor identity from stored snapshots is possible in
 principle (pure functions over raw CSV text + DB state), but no such replay tool is built yet.

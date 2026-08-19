@@ -96,7 +96,7 @@ export function Sidebar() {
 
         <div className="space-y-5">
           <FieldsetGroup legend="Region">
-            <div className="max-h-48 space-y-0.5 overflow-y-auto">
+            <div className="max-h-48 space-y-1.5 overflow-y-auto">
               {ALL_REGIONS.map((region) => (
                 <CheckboxRow
                   key={region}
@@ -176,7 +176,7 @@ export function Sidebar() {
                 It is not part of the official Home Office register and will be wrong for some organisations.
               </p>
             </details>
-            <div className="max-h-48 space-y-0.5 overflow-y-auto">
+            <div className="max-h-48 space-y-1.5 overflow-y-auto">
               {ALL_SECTORS.map((sector) => (
                 <CheckboxRow
                   key={sector}

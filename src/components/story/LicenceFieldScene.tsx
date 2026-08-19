@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Line } from "@react-three/drei";
+import { Line, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { TOWN_COORDS, projectUk } from "@/lib/townCoordinates";
 import { GB_OUTLINE, NI_OUTLINE } from "@/lib/ukOutline";
@@ -20,28 +20,56 @@ interface TownDatum {
   name: string;
   x: number;
   y: number;
+  count: number;
   targetScale: number;
 }
 
 function Node({ datum }: { datum: TownDatum }) {
   const ref = useRef<THREE.Group>(null);
   const current = useRef(0.001);
+  const [hovered, setHovered] = useState(false);
 
   useFrame(() => {
-    current.current += (datum.targetScale - current.current) * 0.08;
+    const target = hovered ? datum.targetScale * 1.35 : datum.targetScale;
+    current.current += (target - current.current) * 0.15;
     if (ref.current) ref.current.scale.setScalar(current.current);
   });
 
+  if (datum.count === 0) return null;
+
   return (
     <group ref={ref} position={[datum.x, datum.y, 0]}>
+      <mesh
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          setHovered(false);
+          document.body.style.cursor = "auto";
+        }}
+      >
+        <sphereGeometry args={[0.09, 12, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
       <mesh>
         <sphereGeometry args={[0.055, 12, 12]} />
-        <meshBasicMaterial color="#4fe8c9" toneMapped={false} />
+        <meshBasicMaterial color={hovered ? "#e8edf4" : "#4fe8c9"} toneMapped={false} />
       </mesh>
       <mesh>
         <sphereGeometry args={[0.14, 12, 12]} />
-        <meshBasicMaterial color="#4fe8c9" transparent opacity={0.18} toneMapped={false} depthWrite={false} />
+        <meshBasicMaterial color="#4fe8c9" transparent opacity={hovered ? 0.32 : 0.18} toneMapped={false} depthWrite={false} />
       </mesh>
+      {hovered && (
+        <Html center distanceFactor={8} style={{ pointerEvents: "none" }}>
+          <div className="whitespace-nowrap rounded-md border border-white/10 bg-void/95 px-2.5 py-1.5 font-mono text-[11px] text-mist shadow-lg">
+            <span className="text-mist">{datum.name}</span>{" "}
+            <span className="text-signal">{datum.count.toLocaleString()}</span>
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
@@ -64,7 +92,7 @@ export function LicenceFieldScene({
       const count = townCounts[name] ?? 0;
       const [x, y] = projectUk(lat, lon);
       const targetScale = count > 0 ? 0.4 + 2.6 * Math.sqrt(count / maxCount) : 0.001;
-      out.push({ name, x: x * SCALE, y: y * SCALE, targetScale });
+      out.push({ name, x: x * SCALE, y: y * SCALE, count, targetScale });
     }
     return out;
   }, [townCounts]);

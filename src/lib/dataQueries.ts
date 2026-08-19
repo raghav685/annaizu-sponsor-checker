@@ -3,6 +3,7 @@
  * public/data/*.json. Nothing here reads from disk - it's all live DB state,
  * so every figure traces back to a sync run.
  */
+import { unstable_cache } from "next/cache";
 import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { sponsors, sponsorRoutes, sponsorEvents, syncRuns } from "@/db/schema";
@@ -80,6 +81,8 @@ async function hydrateSponsorRows(rows: SponsorRow[]): Promise<Sponsor[]> {
       sponsorType: deriveSponsorType(sponsorTypeSet),
       firstSeenAt: new Date(s.firstSeenAt).toISOString(),
       status: s.status === "active" ? "active" : "removed",
+      website: s.website,
+      linkedin: s.linkedin,
     };
   });
 }
@@ -234,7 +237,7 @@ export interface PublishTrendPoint {
 
 /**
  * One point per successful/no-change publish, oldest first - the raw material for the
- * /#console analytics charts. `activeCountAfter` is derived (sponsorsActiveBefore + added -
+ * /sponsors analytics charts. `activeCountAfter` is derived (sponsorsActiveBefore + added -
  * removed) rather than stored, since sync_runs never recorded a post-publish snapshot count.
  * With only a handful of real publishes so far this is intentionally sparse - callers must
  * render exactly what's here, never interpolate or backfill a smoother-looking curve.
@@ -410,7 +413,16 @@ export function buildStatsFromSponsors(sponsorList: Sponsor[]): Stats {
   };
 }
 
-export async function loadMetaForFrontend(): Promise<Meta> {
+// Wrapped in Next's persistent Data Cache (unstable_cache), not just React's
+// request-scoped cache() - this is called from the root layout (sitewide
+// footer) plus the homepage, methodology, and all ~6,800 statically-generated
+// browse/city|industry|route pages. React's cache() only dedupes within one
+// render pass; each of those thousands of static pages is a SEPARATE build-time
+// render, so without a cache that survives across them, a full build meant
+// thousands of extra sequential round-trips to the production DB. This way the
+// underlying query runs at most once per revalidate window, at build time too.
+export const loadMetaForFrontend = unstable_cache(
+  async function loadMetaForFrontend(): Promise<Meta> {
   const lastRun = await db.query.syncRuns.findFirst({
     where: (t, { inArray: inArr }) => inArr(t.status, ["success", "no_change"]),
     orderBy: [desc(syncRuns.startedAt)],
@@ -433,5 +445,8 @@ export async function loadMetaForFrontend(): Promise<Meta> {
     sponsorCount: activeCount,
     unknownRegionCount,
     pipelineRunAt: lastRun?.finishedAt ? new Date(lastRun.finishedAt).toISOString() : "",
-  };
-}
+    };
+  },
+  ["load-meta-for-frontend"],
+  { revalidate: 300 }
+);

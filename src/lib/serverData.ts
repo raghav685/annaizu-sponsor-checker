@@ -42,6 +42,8 @@ export async function getSponsorBySlug(slug: string): Promise<Sponsor | undefine
     sponsorType: deriveSponsorType(new Set(routes.map((r) => r.sponsorType as "Worker" | "Temporary Worker"))),
     firstSeenAt: new Date(row.firstSeenAt).toISOString(),
     status: "active",
+    website: row.website,
+    linkedin: row.linkedin,
   };
 }
 
@@ -70,6 +72,8 @@ export async function getOtherSponsorsInTown(town: string, excludeSlug: string, 
       sponsorType: deriveSponsorType(new Set(routes.map((r) => r.sponsorType as "Worker" | "Temporary Worker"))),
       firstSeenAt: new Date(row.firstSeenAt).toISOString(),
       status: "active",
+      website: row.website,
+      linkedin: row.linkedin,
     });
   }
   return results;

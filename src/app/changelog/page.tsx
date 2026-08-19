@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { EventsFeed } from "@/components/changelog/EventsFeed";
 import { loadSyncRunHistory, loadRecentEvents, type SyncRunSummary } from "@/lib/dataQueries";
+import { buildMetadata } from "@/lib/seo";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Register changelog",
+export const metadata: Metadata = buildMetadata({
+  title: "UK Sponsor Register Changes & Updates | Annaizu",
   description: "Publish-by-publish history of the UK licensed sponsors register: additions, removals, rating and route changes.",
-};
+  path: "/changelog",
+});
 
 const STATUS_LABEL: Record<string, string> = {
   success: "Published",
@@ -48,7 +51,8 @@ export default async function ChangelogPage() {
   return (
     <main className="relative min-h-[100dvh] bg-void px-6 py-12 lg:px-16">
       <div className="mx-auto max-w-4xl">
-        <h1 className="font-display text-2xl font-semibold text-mist lg:text-3xl">Register changelog</h1>
+        <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Changelog", href: "/changelog" }]} />
+        <h1 className="mt-4 font-display text-2xl font-semibold text-mist lg:text-3xl">UK sponsor register changes</h1>
         <p className="mt-2 font-mono text-sm text-mist-dim">Every publish this site has ingested, and the individual sponsor-level changes behind it.</p>
 
         <GlassPanel elevation="raised" className="mt-6 border-ember/30 bg-ember/[0.04] p-4 text-sm leading-relaxed text-mist">

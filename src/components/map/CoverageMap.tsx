@@ -43,7 +43,7 @@ export function CoverageMap({ rows }: { rows: TownCoverageRow[] }) {
           </div>
         </GlassPanel>
 
-        <GlassPanel elevation="base" className="mt-4 max-h-72 overflow-y-auto p-3">
+        <GlassPanel elevation="base" className="mt-4 max-h-72 overflow-y-auto p-4">
           <ul className="grid grid-cols-2 gap-x-4 sm:grid-cols-3">
             {sortedTowns.slice(0, 60).map(([town, count]) => (
               <li key={town}>
@@ -62,14 +62,14 @@ export function CoverageMap({ rows }: { rows: TownCoverageRow[] }) {
 
       <GlassPanel as="aside" elevation="raised" className="order-1 h-fit space-y-5 p-4 lg:order-2 lg:p-5">
         <FieldsetGroup legend="Region">
-          <div className="max-h-56 space-y-0.5 overflow-y-auto">
+          <div className="max-h-56 space-y-1.5 overflow-y-auto">
             {ALL_REGIONS.map((region) => (
               <CheckboxRow key={region} label={region} checked={regions.includes(region)} onChange={() => toggle(regions, setRegions, region)} />
             ))}
           </div>
         </FieldsetGroup>
         <FieldsetGroup legend="Industry (inferred)">
-          <div className="max-h-56 space-y-0.5 overflow-y-auto">
+          <div className="max-h-56 space-y-1.5 overflow-y-auto">
             {ALL_SECTORS.map((sector) => (
               <CheckboxRow key={sector} label={sector} checked={sectors.includes(sector)} onChange={() => toggle(sectors, setSectors, sector)} />
             ))}

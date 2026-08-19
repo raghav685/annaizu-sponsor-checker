@@ -8,6 +8,13 @@
       "when": 1787052151289,
       "tag": "0000_careless_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787093942278,
+      "tag": "0001_flippant_white_tiger",
+      "breakpoints": true
     }
   ]
 }

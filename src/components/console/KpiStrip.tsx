@@ -39,12 +39,12 @@ function SyncBadge({ finishedAt }: { finishedAt: string | null }) {
 
 function Tile({ label, value, icon: TileIcon, color }: { label: string; value: string; icon: Icon; color: string }) {
   return (
-    <GlassPanel elevation="base" className="min-w-0 flex-1 p-3.5">
+    <GlassPanel elevation="base" className="min-w-0 flex-1 p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] uppercase tracking-wide text-mist-dim/70">{label}</p>
         <TileIcon className={`h-4 w-4 shrink-0 ${color}`} />
       </div>
-      <p className={`mt-1.5 font-display text-xl font-semibold leading-none lg:text-2xl ${color}`}>{value}</p>
+      <p className={`mt-2.5 font-display text-xl font-semibold leading-none lg:text-2xl ${color}`}>{value}</p>
     </GlassPanel>
   );
 }
@@ -53,15 +53,13 @@ export function KpiStrip({ kpi }: { kpi: KpiSummary }) {
   const publish = kpi.latestPublish;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-xs text-mist-dim">
-          UK licensed sponsor register <span className="text-mist-dim/50">· browse the latest list and changes</span>
-        </p>
+        <p className="font-mono text-xs text-mist-dim">Browse the latest list and changes.</p>
         <SyncBadge finishedAt={publish?.finishedAt ?? null} />
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Tile label="Active sponsors" value={kpi.activeCount.toLocaleString()} icon={Buildings} color="text-mist" />
         <Tile
           label="Added (latest publish)"

@@ -1,14 +1,17 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { loadBrowseIndex, type BrowseIndexEntry } from "@/lib/dataQueries";
+import { buildMetadata } from "@/lib/seo";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Browse the register",
+export const metadata: Metadata = buildMetadata({
+  title: "Browse UK Licensed Sponsors by City, Industry & Route | Annaizu",
   description: "Browse UK licensed sponsors by city, inferred industry, and visa route.",
-};
+  path: "/browse",
+});
 
 function IndexColumn({ title, entries, hrefFor }: { title: string; entries: BrowseIndexEntry[]; hrefFor: (e: BrowseIndexEntry) => string }) {
   return (
@@ -41,10 +44,11 @@ export default async function BrowsePage() {
   return (
     <main className="relative min-h-[100dvh] bg-void px-6 py-12 lg:px-16">
       <div className="mx-auto max-w-6xl">
-        <h1 className="font-display text-2xl font-semibold text-mist lg:text-3xl">Browse the register</h1>
+        <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Browse", href: "/browse" }]} />
+        <h1 className="mt-4 font-display text-2xl font-semibold text-mist lg:text-3xl">Browse the register</h1>
         <p className="mt-2 font-mono text-sm text-mist-dim">
           Every active sponsor, grouped by city, inferred industry, and visa route. For full filtering, use the{" "}
-          <Link href="/#console" className="text-signal hover:underline">
+          <Link href="/sponsors" className="text-signal hover:underline">
             explorer
           </Link>
           .

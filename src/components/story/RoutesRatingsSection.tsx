@@ -6,11 +6,12 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useExplorerStore } from "@/lib/store";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { RevealHeadline } from "./RevealHeadline";
+import type { Stats } from "@/lib/types";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export function RoutesRatingsSection() {
-  const stats = useExplorerStore((s) => s.globalStats);
+export function RoutesRatingsSection({ initialStats }: { initialStats: Stats | null }) {
+  const stats = useExplorerStore((s) => s.globalStats) ?? initialStats;
   const reduced = useReducedMotion();
   const barsRef = useRef<HTMLDivElement>(null);
 

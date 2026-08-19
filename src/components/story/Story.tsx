@@ -4,16 +4,17 @@ import { ScaleSection } from "./ScaleSection";
 import { GeographySection } from "./GeographySection";
 import { RoutesRatingsSection } from "./RoutesRatingsSection";
 import { Handoff } from "./Handoff";
+import type { Meta, Stats } from "@/lib/types";
 
-export function Story() {
+export function Story({ initialMeta, initialStats }: { initialMeta: Meta | null; initialStats: Stats | null }) {
   return (
-    <div className="relative">
-      <Hero />
+    <main id="main-content" className="relative">
+      <Hero initialMeta={initialMeta} initialStats={initialStats} />
       <WhatIsRegister />
-      <ScaleSection />
-      <GeographySection />
-      <RoutesRatingsSection />
+      <ScaleSection initialStats={initialStats} />
+      <GeographySection initialStats={initialStats} />
+      <RoutesRatingsSection initialStats={initialStats} />
       <Handoff />
-    </div>
+    </main>
   );
 }

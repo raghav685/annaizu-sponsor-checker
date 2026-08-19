@@ -2,30 +2,30 @@
 
 import dynamic from "next/dynamic";
 import { useSponsorsData } from "@/hooks/useSponsorsData";
-import { useUrlSync } from "@/hooks/useUrlSync";
 import { SmoothScrollProvider } from "./providers/SmoothScrollProvider";
 import { FlowFieldBackground } from "./story/FlowFieldBackground";
 import { Story } from "./story/Story";
-import { ConsoleShell } from "./console/ConsoleShell";
-import { Footer } from "./Footer";
-import type { KpiSummary, PublishTrendPoint } from "@/lib/dataQueries";
+import type { Meta, Stats } from "@/lib/types";
 
 const ParticleField = dynamic(() => import("./story/ParticleField").then((m) => m.ParticleField), { ssr: false });
 
-export function ExplorerApp({ kpi, trend }: { kpi: KpiSummary | null; trend: PublishTrendPoint[] }) {
-  useSponsorsData();
-  useUrlSync();
+/** Homepage narrative only - the sponsors console lives at /sponsors. */
+export function ExplorerApp({ initialMeta, initialStats }: { initialMeta: Meta | null; initialStats: Stats | null }) {
+  // The story only ever needs aggregated stats, never the full per-sponsor
+  // list - skip the ~30MB register fetch that /sponsors actually uses. The
+  // client fetch still runs (to stay fresh/interactive); initialMeta/initialStats
+  // are just what renders before it resolves, so crawlers and first paint see
+  // real numbers instead of 0/null.
+  useSponsorsData({ loadSponsors: false });
 
   return (
     <SmoothScrollProvider>
-      <a href="#console" className="skip-link">
-        Skip to console
+      <a href="#main-content" className="skip-link">
+        Skip to content
       </a>
       <FlowFieldBackground />
       <ParticleField />
-      <Story />
-      <ConsoleShell kpi={kpi} trend={trend} />
-      <Footer />
+      <Story initialMeta={initialMeta} initialStats={initialStats} />
     </SmoothScrollProvider>
   );
 }

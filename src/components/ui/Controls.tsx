@@ -84,7 +84,7 @@ export function CheckboxRow({
   count?: number;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-white/[0.04]">
+    <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-sm hover:bg-white/[0.04]">
       <span className="flex items-center gap-2 truncate">
         <span
           aria-hidden

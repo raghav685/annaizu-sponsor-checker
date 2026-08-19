@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { buildMetadata } from "@/lib/seo";
+import { loadMetaForFrontend } from "@/lib/dataQueries";
 
-export const metadata: Metadata = {
-  title: "Data & methodology",
+export const revalidate = 300;
+
+export const metadata: Metadata = buildMetadata({
+  title: "UK Sponsor Register Data & Methodology | Annaizu",
   description: "Where the data comes from, how it's synced, and the known limitations of the identity-matching approach.",
-};
+  path: "/methodology",
+});
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -15,12 +21,38 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function MethodologyPage() {
+export default async function MethodologyPage() {
+  let meta = null;
+  try {
+    meta = await loadMetaForFrontend();
+  } catch {
+    // Dataset JSON-LD is skipped below if this fails - the page itself doesn't depend on it.
+  }
+
+  const datasetJsonLd = meta
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        name: "UK Register of Licensed Sponsors",
+        description: "Home Office register of organisations licensed to sponsor Skilled Worker and other UK visas, as synced and re-published by this checker.",
+        url: meta.sourceUrl,
+        license: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        creator: { "@type": "Organization", name: "UK Home Office / UK Visas and Immigration" },
+        publisher: { "@type": "Organization", name: "annaizu", url: "https://www.annaizu.com/" },
+        distribution: { "@type": "DataDownload", contentUrl: meta.csvUrl, encodingFormat: "text/csv" },
+        dateModified: meta.pipelineRunAt,
+      }
+    : null;
+
   return (
     <main className="relative min-h-[100dvh] bg-void px-6 py-12 lg:px-16">
+      {datasetJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }} />
+      )}
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-mist lg:text-3xl">Data &amp; methodology</h1>
+          <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Data & methodology", href: "/methodology" }]} />
+          <h1 className="mt-4 font-display text-2xl font-semibold text-mist lg:text-3xl">How the UK sponsor checker data works</h1>
           <p className="mt-2 font-mono text-sm text-mist-dim">How this site turns the published register into what you see.</p>
         </div>
 

@@ -11,8 +11,9 @@ transactional diff/commit, plain `added`/`removed`/`rating_changed`/
 `>2%` removal halt, snapshot storage, `/api/health` (with an external
 dead-man's-switch contract), Vercel Cron scheduling + manual trigger + visible
 run history (`/sync-status`), full operational alerting, the frontend cutover
-(nothing reads from static JSON), and Companies House status classification +
-industry backfill (rate-limited, queued, cached).
+(nothing reads from static JSON), Companies House status classification +
+industry backfill (rate-limited, queued, cached), and an initial verified
+website/LinkedIn link seed (~500 sponsors, see below).
 
 **Deferred to later phases** (tables exist in the schema now so nothing needs
 reprocessing later, but nothing populates them yet):
@@ -22,6 +23,31 @@ reprocessing later, but nothing populates them yet):
 - `daily_totals` / `daily_breakdowns` precomputed rollups for the analytics
   page - Phase 4.
 - The Reportable Change Scanner - next.
+- **Automated website/LinkedIn enrichment.** No paid company-data API and no
+  wired-up LLM-with-web-search client exists in this app - a confident match
+  currently requires real research judgement, the same as the initial seed
+  below. `scripts/pickLinkCandidates.ts` exposes the same prioritized
+  `pickBatch` selection `processCompaniesHouseQueue` uses (biggest sponsors by
+  current route count first, via `sponsors.linksCheckedAt`), ready to hand to
+  either a human or an agent with web search. Until an automated matcher is
+  built, growing coverage beyond the initial seed is a manual/occasional
+  operation: run `pickLinkCandidates.ts`, research the batch, write
+  `results-*.json` files shaped `{ id, website, linkedin }[]`, then run
+  `scripts/seedSponsorLinks.ts <directory>`.
+
+## Website/LinkedIn links
+
+`sponsors.website` / `sponsors.linkedin` are nullable and populated **only**
+by a verified lookup - never a guessed or search-fallback URL (`SponsorLinks.tsx`
+simply omits the icon when null; see `DECISIONS.md`'s "Reversal: Website/LinkedIn
+links" entry for the full reasoning). The initial ~500-sponsor seed (biggest
+active sponsors by current route count, the best size proxy this dataset has)
+was researched via parallel web-search agents and loaded with
+`scripts/seedSponsorLinks.ts`. Every sponsor processed gets `linksCheckedAt`
+stamped regardless of whether a match was found, so a confident "nothing found"
+isn't re-researched on every future pass before the recheck window
+(`RECHECK_AFTER_DAYS` in `pickLinkCandidates.ts`) elapses - identical in spirit
+to `companiesHouseMatchedAt`'s role in the Companies House queue.
 
 ## Scheduling & operational safety
 

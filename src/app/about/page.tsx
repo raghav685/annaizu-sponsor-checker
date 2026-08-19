@@ -1,19 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About",
-  description: "What this site is, where its data comes from, and what it isn't.",
-};
+export const metadata: Metadata = buildMetadata({
+  title: "About the UK Sponsor Licence Checker | Annaizu",
+  description: "Who built this sponsor checker, where its data comes from, and what it isn't.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (
     <main className="relative min-h-[100dvh] bg-void px-6 py-12 lg:px-16">
       <div className="mx-auto max-w-3xl">
-        <h1 className="font-display text-2xl font-semibold text-mist lg:text-3xl">About this site</h1>
+        <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "About", href: "/about" }]} />
+        <h1 className="mt-4 font-display text-2xl font-semibold text-mist lg:text-3xl">About the Annaizu UK Sponsor Licence Checker</h1>
 
         <GlassPanel elevation="raised" className="mt-6 space-y-4 p-5 text-sm leading-relaxed text-mist-dim lg:p-6">
+          <p>
+            This sponsor checker is built and maintained by{" "}
+            <a href="https://www.annaizu.com/" target="_blank" rel="noopener noreferrer" className="text-signal hover:underline">
+              annaizu
+            </a>
+            , the platform UK employers use to manage sponsor licence compliance, Certificates of Sponsorship, and right-to-work
+            checks in one place. We built this checker because the question &quot;does this organisation actually hold a sponsor
+            licence right now&quot; comes up constantly - for HR teams vetting a new hire&apos;s employer, for candidates
+            weighing an offer, and for compliance teams keeping their own record honest against GOV.UK&apos;s.
+          </p>
           <p>
             This is a searchable mirror of the Home Office&apos;s register of organisations licensed to sponsor Skilled Worker and
             other UK visas. The register itself is published by GOV.UK; this site fetches it, keeps a history of what changed

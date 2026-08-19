@@ -34,7 +34,7 @@ export function RemovedSponsorsPanel() {
     return <p className="p-6 text-center font-mono text-xs text-mist-dim">Loading…</p>;
   }
   if (state.error) {
-    return <p className="p-6 text-center font-mono text-xs text-ember">Couldn&apos;t load revoked sponsors - try again.</p>;
+    return <p className="p-6 text-center font-mono text-xs text-ember">Couldn&apos;t load removed sponsors - try again.</p>;
   }
 
   return (

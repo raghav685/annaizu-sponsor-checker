@@ -15,7 +15,7 @@ import type { KpiSummary, PublishTrendPoint } from "@/lib/dataQueries";
 
 const STATUS_TABS = [
   { key: "active", label: "Active" },
-  { key: "revoked", label: "Revoked" },
+  { key: "revoked", label: "Removed" },
 ] as const;
 
 export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: PublishTrendPoint[] }) {
@@ -26,9 +26,12 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
   const sponsorsLoaded = useExplorerStore((s) => s.sponsors !== null);
 
   return (
-    <section id="console" className="relative z-content flex min-h-[100dvh] scroll-mt-14 bg-void">
+    <main className="relative z-content flex min-h-[100dvh] bg-void">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 lg:p-6">
+        <h1 className="font-display text-lg font-semibold text-mist lg:text-xl">
+          Search the UK register of licensed sponsors
+        </h1>
         {kpi && <KpiStrip kpi={kpi} />}
         <AnalyticsSection trend={trend} />
         <div className="border-t border-hairline pt-5">
@@ -79,6 +82,6 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
           </div>
         </div>
       </div>
-    </section>
+    </main>
   );
 }

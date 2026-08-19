@@ -175,6 +175,15 @@ export const sponsors = pgTable(
   companiesHouseMatchConfidence: numeric("companies_house_match_confidence"),
   companiesHouseMatchedAt: timestamp("companies_house_matched_at", { withTimezone: true }),
 
+  // Verified official website / LinkedIn company page - never a guessed or
+  // search-fallback URL (see SponsorLinks.tsx). Null means "not yet looked
+  // up or no confident match", not "confirmed absent" - linksCheckedAt is
+  // what gates re-checking, same pattern as companiesHouseMatchedAt above.
+  website: text("website"),
+  linkedin: text("linkedin"),
+  linksCheckedAt: timestamp("links_checked_at", { withTimezone: true }),
+  linksSource: text("links_source"),
+
   // Self-FK so a later identity-merge (see sponsor_links) can redirect lookups
   // to the surviving sponsor in O(1) without rewriting historical event rows.
   mergedIntoId: uuid("merged_into_id"),

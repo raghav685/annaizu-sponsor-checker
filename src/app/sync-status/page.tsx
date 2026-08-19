@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import { desc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { syncRuns } from "@/db/schema";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Sync status",
+  description: "Run history for the daily GOV.UK register sync - source hash, rows processed, and any halted publishes.",
+  // noindex is the operative signal here - robots.txt must NOT also disallow
+  // this path, or the noindex meta itself is never seen. follow:true so link
+  // equity from this page (e.g. to /changelog) still flows.
+  robots: { index: false, follow: true },
+};
 
 const STATUS_STYLE: Record<string, string> = {
   success: "text-signal border-signal/40 bg-signal/10",
