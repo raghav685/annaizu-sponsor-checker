@@ -72,7 +72,7 @@ export function SponsorTableRow({ sponsor, height }: { sponsor: Sponsor; height:
         <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-signal" : "bg-mist-dim"}`} />
         {isActive ? "Active" : "Removed"}
       </span>
-      <SponsorLinks name={sponsor.name} website={sponsor.website} linkedin={sponsor.linkedin} />
+      <SponsorLinks />
       <span className="whitespace-nowrap text-right font-mono text-xs text-mist-dim">{formatAdded(sponsor.firstSeenAt)}</span>
     </div>
   );

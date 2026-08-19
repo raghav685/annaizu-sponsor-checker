@@ -111,26 +111,6 @@ export default async function SponsorDetailPage({ params }: Props) {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <CopyRecordButton sponsor={sponsor} />
-            {sponsor.website && (
-              <a
-                href={sponsor.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
-              >
-                Official website
-              </a>
-            )}
-            {sponsor.linkedin && (
-              <a
-                href={sponsor.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
-              >
-                LinkedIn
-              </a>
-            )}
           </div>
         </GlassPanel>
 
