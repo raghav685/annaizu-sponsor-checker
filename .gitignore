@@ -36,6 +36,8 @@ yarn-error.log*
 
 # vercel
 .vercel
+.agents
+.claude/skills
 
 # local dev database (embedded PGlite, file-backed) - never used in production
 /.pglite-data/

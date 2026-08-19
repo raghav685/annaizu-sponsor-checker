@@ -6,8 +6,8 @@ async function main() {
   console.log(`[migrate] Target: ${describeDbTarget()}`);
   console.log(`[migrate] Applying migrations from ${migrationsFolder} via ${dbDriver} driver...`);
 
-  if (dbDriver === "neon") {
-    const { migrate } = await import("drizzle-orm/neon-serverless/migrator");
+  if (dbDriver === "postgres") {
+    const { migrate } = await import("drizzle-orm/postgres-js/migrator");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await migrate(db as any, { migrationsFolder });
   } else {
@@ -19,7 +19,7 @@ async function main() {
   console.log("[migrate] Done.");
 }
 
-// Explicit exit: the PGlite/Neon connection has no automatic close and keeps
+// Explicit exit: the PGlite/postgres connection has no automatic close and keeps
 // the event loop alive indefinitely once migrations are applied - without
 // this, the script prints "Done." and then hangs forever.
 main()

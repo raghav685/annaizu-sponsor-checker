@@ -1,5 +1,5 @@
-import { Pool } from "@neondatabase/serverless";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless";
+import postgres from "postgres";
+import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import * as schema from "./schema";
@@ -12,9 +12,12 @@ import * as schema from "./schema";
 // so a misconfigured environment fails loudly instead of producing numbers
 // that look real but aren't.
 //
-// Uses the neon-serverless (WebSocket/Pool) driver rather than neon-http: the
-// sync pipeline requires real transactions for the staging->swap import, and
-// neon-http is stateless HTTP-per-query with no transaction support at all.
+// Standard Postgres wire protocol (postgres-js), not a Neon-specific driver -
+// the database is Supabase (moved off Neon after its free-tier data transfer
+// quota was exhausted). `prepare: false` is required when the connection
+// string routes through pgbouncer in transaction-pooling mode (Supabase's
+// pooled connection does) - prepared statements aren't safe to reuse across
+// pooled connections that can be handed to a different backend per query.
 function createDb() {
   const explicitPglite = process.env.DB_DRIVER === "pglite";
 
@@ -23,11 +26,11 @@ function createDb() {
       throw new Error(
         "DATABASE_URL is not set, and DB_DRIVER=pglite was not explicitly requested. " +
           "Refusing to silently fall back to a local embedded DB. Set DATABASE_URL for a real " +
-          "Postgres/Neon connection, or set DB_DRIVER=pglite to explicitly opt into local dev."
+          "Postgres connection, or set DB_DRIVER=pglite to explicitly opt into local dev."
       );
     }
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    return { db: drizzleNeon(pool, { schema }), driver: "neon" as const, client: null as PGlite | null };
+    const client = postgres(process.env.DATABASE_URL, { prepare: false });
+    return { db: drizzlePostgres(client, { schema }), driver: "postgres" as const, client: null as PGlite | null };
   }
 
   const client = new PGlite("./.pglite-data");
@@ -53,12 +56,12 @@ export const dbDriver = dbHandle.driver;
 
 /** Safe-to-log description of what this process is actually writing to - never includes credentials. */
 export function describeDbTarget(): string {
-  if (dbDriver === "neon") {
+  if (dbDriver === "postgres") {
     try {
       const host = new URL(process.env.DATABASE_URL!).hostname;
-      return `neon (${host})`;
+      return `postgres (${host})`;
     } catch {
-      return "neon (unparseable DATABASE_URL host)";
+      return "postgres (unparseable DATABASE_URL host)";
     }
   }
   return "pglite (local, .pglite-data/ - DB_DRIVER=pglite was explicitly set)";

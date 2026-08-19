@@ -13,7 +13,10 @@ export interface StoredSnapshot {
 export async function putSnapshot(key: string, data: Buffer): Promise<StoredSnapshot> {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     const { put } = await import("@vercel/blob");
-    const blob = await put(key, data, { access: "public", addRandomSuffix: false });
+    // allowOverwrite is safe here specifically because `key` is content-hash-addressed
+    // (see the caller in runSync.ts) - a collision on the exact same key can only mean
+    // byte-identical content was already uploaded, never a different file under the same name.
+    const blob = await put(key, data, { access: "public", addRandomSuffix: false, allowOverwrite: true });
     return { url: blob.url, key: blob.pathname };
   }
 
