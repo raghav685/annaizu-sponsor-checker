@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useExplorerStore } from "@/lib/store";
 import { useFilterWorker } from "@/hooks/useFilterWorker";
 import { Sidebar } from "./Sidebar";
@@ -15,17 +15,21 @@ import type { KpiSummary, PublishTrendPoint } from "@/lib/dataQueries";
 
 const STATUS_TABS = [
   { key: "active", label: "Active" },
-  { key: "withdrawn", label: "Withdrawn" },
-  { key: "closed", label: "Closed" },
-  { key: "unknown", label: "Unclassified" },
+  { key: "suspended", label: "Suspended" },
+  { key: "revoked", label: "Revoked" },
 ] as const;
 
 export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: PublishTrendPoint[] }) {
   useFilterWorker();
   const [statusTab, setStatusTab] = useState<(typeof STATUS_TABS)[number]["key"]>("active");
-  const resultCount = useExplorerStore((s) => s.result.ids.length);
+  const rawResultIds = useExplorerStore((s) => s.result.ids);
+  const sponsorsById = useExplorerStore((s) => s.sponsorsById);
   const totalCount = useExplorerStore((s) => s.globalStats?.totalSponsors ?? 0);
   const sponsorsLoaded = useExplorerStore((s) => s.sponsors !== null);
+  const resultCount = useMemo(
+    () => (statusTab === "revoked" ? rawResultIds.length : rawResultIds.filter((id) => sponsorsById?.get(id)?.status === statusTab).length),
+    [rawResultIds, sponsorsById, statusTab]
+  );
 
   return (
     <main className="relative z-content flex min-h-[100dvh] bg-void">
@@ -53,7 +57,11 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
               ))}
             </div>
           </div>
-          {statusTab === "active" ? (
+          {statusTab === "revoked" ? (
+            <p className="mt-3 font-mono text-xs text-mist-dim">
+              Sponsors observed leaving the register. Search and filters apply to the active/suspended lists only.
+            </p>
+          ) : (
             <>
               <div className="mt-3">
                 <SearchBar />
@@ -71,13 +79,11 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
                 <ActiveFilterChips />
               </div>
             </>
-          ) : (
-            <p className="mt-3 font-mono text-xs text-mist-dim">Sponsors observed leaving the register. Search and filters apply to the active list only.</p>
           )}
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[1fr_420px]">
           <div className="min-h-[32rem] xl:h-[calc(100dvh-11rem)]">
-            {statusTab === "active" ? <ResultsGrid /> : <RemovedSponsorsPanel status={statusTab} />}
+            {statusTab === "revoked" ? <RemovedSponsorsPanel /> : <ResultsGrid statusFilter={statusTab} />}
           </div>
           <div className="xl:h-[calc(100dvh-11rem)] xl:overflow-y-auto xl:pr-1">
             <ChartsPanel />

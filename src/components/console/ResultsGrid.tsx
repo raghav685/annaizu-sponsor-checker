@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useExplorerStore } from "@/lib/store";
 import { GlassPanel } from "@/components/ui/GlassPanel";
@@ -8,11 +8,19 @@ import { ROW_HEIGHTS, TABLE_MIN_WIDTH_CLASS, SponsorTableHeader, SponsorTableRow
 import { EmptyState } from "./EmptyState";
 import { SkeletonGrid } from "./SkeletonGrid";
 
-export function ResultsGrid() {
+// Active and Suspended are both drawn from the same underlying active-sponsor list (a
+// suspended sponsor is still active on the register, it just has a prior "removed" event
+// in its history - see hydrateSponsorRows) - this narrows the filter-worker's result set
+// to just the tab currently selected, rather than a separate fetch.
+export function ResultsGrid({ statusFilter }: { statusFilter?: "active" | "suspended" } = {}) {
   const [parentEl, setParentEl] = useState<HTMLDivElement | null>(null);
   const parentRef = useCallback((node: HTMLDivElement | null) => setParentEl(node), []);
   const sponsorsById = useExplorerStore((s) => s.sponsorsById);
-  const ids = useExplorerStore((s) => s.result.ids);
+  const rawIds = useExplorerStore((s) => s.result.ids);
+  const ids = useMemo(
+    () => (statusFilter ? rawIds.filter((id) => sponsorsById?.get(id)?.status === statusFilter) : rawIds),
+    [rawIds, sponsorsById, statusFilter]
+  );
   const density = useExplorerStore((s) => s.filters.density);
   const sponsorsLoaded = useExplorerStore((s) => s.sponsors !== null);
 

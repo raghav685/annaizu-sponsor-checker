@@ -47,10 +47,12 @@ export interface Sponsor {
   sponsorType: SponsorType;
   /** ISO date this sponsor first appeared on the register (per firstSeenAt in the DB). */
   firstSeenAt: string;
-  /** "withdrawn"/"closed" only ever come from a confident Companies House match (see
-   *  classifyCompanyStatus) - "unknown" means removed from the register but not yet
-   *  classified, never a guess at which bucket it belongs in. */
-  status: "active" | "withdrawn" | "closed" | "unknown";
+  /** "suspended" means currently active but has at least one prior "removed" event in its
+   *  history (left the register and came back) - the one non-active-sounding label we can
+   *  back with real data. "revoked" covers every current non-active status (withdrawn,
+   *  closed, unknown) collapsed into one bucket; it's a deliberate label choice, not a claim
+   *  we can verify the cause of (see DECISIONS.md). */
+  status: "active" | "suspended" | "revoked";
   /** Verified official links only - null means "not yet looked up," never a guessed/search URL. */
   website: string | null;
   linkedin: string | null;

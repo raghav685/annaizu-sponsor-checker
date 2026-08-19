@@ -45,7 +45,26 @@ type SponsorRow = typeof sponsors.$inferSelect;
 // Past the threshold it's cheaper and safer to just load every current route.
 const INARRAY_ROW_LIMIT = 5000;
 
-async function hydrateSponsorRows(rows: SponsorRow[]): Promise<Sponsor[]> {
+/**
+ * A currently-active sponsor that has at least one `removed` event in its
+ * history left the register at some point and came back - the one presentation
+ * status we can honestly call "suspended" without asserting a cause we don't
+ * know (unlike "revoked", which is a deliberate label choice on data we can't
+ * fully verify - see DECISIONS.md). Cached because it's a full-table scan of
+ * sponsor_events, not something to redo on every request.
+ */
+// Returns a plain array, not a Set - unstable_cache round-trips its result through
+// JSON, and JSON.stringify(new Set(...)) silently produces "{}".
+const loadReactivatedSponsorIdList = unstable_cache(
+  async (): Promise<string[]> => {
+    const rows = await db.selectDistinct({ sponsorId: sponsorEvents.sponsorId }).from(sponsorEvents).where(eq(sponsorEvents.eventType, "removed"));
+    return rows.map((r) => r.sponsorId);
+  },
+  ["reactivated-sponsor-ids"],
+  { revalidate: 300 }
+);
+
+async function hydrateSponsorRows(rows: SponsorRow[], reactivatedIds?: Set<string>): Promise<Sponsor[]> {
   if (rows.length === 0) return [];
   const currentRoutes = await db
     .select()
@@ -80,7 +99,7 @@ async function hydrateSponsorRows(rows: SponsorRow[]): Promise<Sponsor[]> {
       rating: deriveRating(ratings),
       sponsorType: deriveSponsorType(sponsorTypeSet),
       firstSeenAt: new Date(s.firstSeenAt).toISOString(),
-      status: s.status,
+      status: s.status !== "active" ? "revoked" : reactivatedIds?.has(s.id) ? "suspended" : "active",
       website: s.website,
       linkedin: s.linkedin,
     };
@@ -89,15 +108,16 @@ async function hydrateSponsorRows(rows: SponsorRow[]): Promise<Sponsor[]> {
 
 /** The full set of active sponsors - see hydrateSponsorRows for the shape. */
 export async function loadActiveSponsorsForFrontend(): Promise<Sponsor[]> {
-  const activeSponsors = await db.select().from(sponsors).where(eq(sponsors.status, "active"));
-  return hydrateSponsorRows(activeSponsors);
+  const [activeSponsors, reactivatedIdList] = await Promise.all([db.select().from(sponsors).where(eq(sponsors.status, "active")), loadReactivatedSponsorIdList()]);
+  return hydrateSponsorRows(activeSponsors, new Set(reactivatedIdList));
 }
 
 /**
- * Sponsors no longer on the register (status != active) - always empty today, since the
- * baseline sync has nothing to remove anything against yet. Kept separate from the active
- * loader/store rather than blended in, so the site's core stats and filters stay exactly
- * "active sponsors only" and this can be wired up for real once removals start accruing.
+ * Sponsors no longer on the register (status != active), presented as a single "revoked"
+ * bucket regardless of the underlying withdrawn/closed/unknown split - always empty today,
+ * since the baseline sync has nothing to remove anything against yet. Kept separate from
+ * the active loader/store rather than blended in, so the site's core stats and filters
+ * stay exactly "active sponsors only".
  */
 export async function loadRemovedSponsorsForFrontend(): Promise<Sponsor[]> {
   const removed = await db.select().from(sponsors).where(ne(sponsors.status, "active"));

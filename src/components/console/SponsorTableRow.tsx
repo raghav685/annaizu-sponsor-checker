@@ -43,18 +43,25 @@ export function SponsorTableHeader() {
 // and LinkedIn icons both seem to open the same destination). The row itself is a plain div
 // that navigates on click; only the organisation name and the link icons are real anchors,
 // as siblings rather than nested inside one another.
-// "Withdrawn" and "Closed" only ever come from a confident Companies House match; "Unclassified"
-// means removed from the register but not yet checked - never asserted to be one or the other.
 const STATUS_LABEL: Record<Sponsor["status"], string> = {
   active: "Active",
-  withdrawn: "Withdrawn",
-  closed: "Closed",
-  unknown: "Unclassified",
+  suspended: "Suspended",
+  revoked: "Revoked",
+};
+
+const STATUS_COLOR: Record<Sponsor["status"], string> = {
+  active: "text-signal",
+  suspended: "text-ember",
+  revoked: "text-mist-dim",
+};
+const STATUS_DOT_COLOR: Record<Sponsor["status"], string> = {
+  active: "bg-signal",
+  suspended: "bg-ember",
+  revoked: "bg-mist-dim",
 };
 
 export function SponsorTableRow({ sponsor, height }: { sponsor: Sponsor; height: number }) {
   const router = useRouter();
-  const isActive = sponsor.status === "active";
   const href = `/sponsor/${sponsor.id}`;
 
   return (
@@ -77,8 +84,8 @@ export function SponsorTableRow({ sponsor, height }: { sponsor: Sponsor; height:
       <span>
         <RatingBadge rating={sponsor.rating} />
       </span>
-      <span className={`inline-flex items-center gap-1.5 font-mono text-xs ${isActive ? "text-signal" : "text-mist-dim"}`}>
-        <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-signal" : "bg-mist-dim"}`} />
+      <span className={`inline-flex items-center gap-1.5 font-mono text-xs ${STATUS_COLOR[sponsor.status]}`}>
+        <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLOR[sponsor.status]}`} />
         {STATUS_LABEL[sponsor.status]}
       </span>
       <SponsorLinks />

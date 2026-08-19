@@ -5,16 +5,7 @@ import { GlassPanel } from "@/components/ui/GlassPanel";
 import { SponsorTableHeader, SponsorTableRow } from "./SponsorTableRow";
 import type { Sponsor } from "@/lib/types";
 
-const EMPTY_MESSAGE: Record<Exclude<Sponsor["status"], "active">, string> = {
-  withdrawn:
-    "No sponsors are currently classified as withdrawn. This bucket means Companies House confirms the organisation is still trading, so the register removal reason (surrender, non-renewal, a rename, or a relocation) isn't known.",
-  closed:
-    "No sponsors are currently classified as closed. This bucket only includes organisations Companies House confirms have been dissolved, gone into liquidation, or similar - a fact about the company itself, not a claim about why it left the register.",
-  unknown:
-    "No sponsors are currently unclassified. This bucket is for organisations observed leaving the register that haven't been checked against Companies House yet.",
-};
-
-export function RemovedSponsorsPanel({ status }: { status: Exclude<Sponsor["status"], "active"> }) {
+export function RemovedSponsorsPanel() {
   const [state, setState] = useState<{ loading: boolean; sponsors: Sponsor[]; error: boolean }>({
     loading: true,
     sponsors: [],
@@ -46,18 +37,19 @@ export function RemovedSponsorsPanel({ status }: { status: Exclude<Sponsor["stat
     return <p className="p-6 text-center font-mono text-xs text-ember">Couldn&apos;t load removed sponsors - try again.</p>;
   }
 
-  const filtered = state.sponsors.filter((s) => s.status === status);
-
   return (
     <GlassPanel elevation="base" className="flex h-full flex-col overflow-hidden">
       <SponsorTableHeader />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {state.sponsors.length === 0 ? (
           <div className="flex h-full items-center justify-center p-8 text-center">
-            <p className="max-w-sm font-mono text-xs text-mist-dim">{EMPTY_MESSAGE[status]}</p>
+            <p className="max-w-sm font-mono text-xs text-mist-dim">
+              No sponsors are currently revoked. This means observed leaving the register - it isn&apos;t a confirmed claim about why
+              (could be a genuine licence loss, a voluntary surrender, or a rename/relocation that looks identical in the data).
+            </p>
           </div>
         ) : (
-          filtered.map((s) => <SponsorTableRow key={s.id} sponsor={s} height={56} />)
+          state.sponsors.map((s) => <SponsorTableRow key={s.id} sponsor={s} height={56} />)
         )}
       </div>
     </GlassPanel>
