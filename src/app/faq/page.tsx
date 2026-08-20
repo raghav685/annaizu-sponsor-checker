@@ -62,17 +62,13 @@ const FAQS: Faq[] = [
       <>
         The Home Office removes sponsors that lose their licence, but this site currently can&apos;t distinguish that from a
         rename or an office relocation - both look identical to a removal in the underlying diff. See the{" "}
-        <Link href="/changelog" className="text-signal hover:underline">
-          changelog
-        </Link>{" "}
-        and{" "}
         <Link href="/methodology" className="text-signal hover:underline">
           methodology
         </Link>{" "}
         page for the full explanation.
       </>
     ),
-    plainA: "The Home Office removes sponsors that lose their licence, but this site currently can't distinguish that from a rename or an office relocation - both look identical to a removal in the underlying diff. See the changelog and methodology page for the full explanation.",
+    plainA: "The Home Office removes sponsors that lose their licence, but this site currently can't distinguish that from a rename or an office relocation - both look identical to a removal in the underlying diff. See the methodology page for the full explanation.",
   },
   {
     q: "Is this the official GOV.UK register?",

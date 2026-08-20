@@ -10,8 +10,7 @@ import { ResultsGrid } from "./ResultsGrid";
 import { RemovedSponsorsPanel } from "./RemovedSponsorsPanel";
 import { ChartsPanel } from "./ChartsPanel";
 import { KpiStrip } from "./KpiStrip";
-import { AnalyticsSection } from "./AnalyticsSection";
-import type { KpiSummary, PublishTrendPoint } from "@/lib/dataQueries";
+import type { KpiSummary } from "@/lib/dataQueries";
 import { formatNumber } from "@/lib/formatNumber";
 
 const STATUS_TABS = [
@@ -20,7 +19,7 @@ const STATUS_TABS = [
   { key: "revoked", label: "Revoked" },
 ] as const;
 
-export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: PublishTrendPoint[] }) {
+export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
   useFilterWorker();
   const [statusTab, setStatusTab] = useState<(typeof STATUS_TABS)[number]["key"]>("active");
   const rawResultIds = useExplorerStore((s) => s.result.ids);
@@ -40,7 +39,6 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
           Search the UK register of licensed sponsors
         </h1>
         {kpi && <KpiStrip kpi={kpi} />}
-        <AnalyticsSection trend={trend} />
         <ChartsPanel />
         <div className="border-t border-hairline pt-5">
           <div className="flex flex-wrap items-center justify-between gap-3">

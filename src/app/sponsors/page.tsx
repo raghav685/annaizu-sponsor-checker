@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SponsorsConsole } from "@/components/SponsorsConsole";
-import { loadKpiSummary, loadPublishTrend, type KpiSummary, type PublishTrendPoint } from "@/lib/dataQueries";
+import { loadKpiSummary, type KpiSummary } from "@/lib/dataQueries";
 import { buildMetadata } from "@/lib/seo";
 
 export const revalidate = 300;
@@ -14,12 +14,11 @@ export const metadata: Metadata = buildMetadata({
 
 export default async function SponsorsPage() {
   let kpi: KpiSummary | null = null;
-  let trend: PublishTrendPoint[] = [];
   try {
-    [kpi, trend] = await Promise.all([loadKpiSummary(), loadPublishTrend()]);
+    kpi = await loadKpiSummary();
   } catch (err) {
-    console.error("Failed to load KPI/trend for /sponsors", err);
+    console.error("Failed to load KPI for /sponsors", err);
   }
 
-  return <SponsorsConsole kpi={kpi} trend={trend} />;
+  return <SponsorsConsole kpi={kpi} />;
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Buildings } from "@phosphor-icons/react/dist/csr/Buildings";
 import { TrendUp } from "@phosphor-icons/react/dist/csr/TrendUp";
 import { Prohibit } from "@phosphor-icons/react/dist/csr/Prohibit";
@@ -87,11 +86,7 @@ export function KpiStrip({ kpi }: { kpi: KpiSummary }) {
       </div>
       <p className="font-mono text-[10px] leading-relaxed text-mist-dim/60">
         {kpi.historyBeginsAt && <>Sync history begins {formatDate(kpi.historyBeginsAt)} · </>}
-        &quot;Removed&quot; is observed register movement, not confirmed licence loss - see the{" "}
-        <Link href="/changelog" className="text-signal hover:underline">
-          changelog
-        </Link>
-        .
+        &quot;Removed&quot; is observed register movement, not confirmed licence loss.
       </p>
     </div>
   );

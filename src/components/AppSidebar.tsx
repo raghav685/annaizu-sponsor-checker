@@ -8,12 +8,10 @@ import { House } from "@phosphor-icons/react/dist/csr/House";
 import { Buildings } from "@phosphor-icons/react/dist/csr/Buildings";
 import { MapTrifold } from "@phosphor-icons/react/dist/csr/MapTrifold";
 import { FileCsv } from "@phosphor-icons/react/dist/csr/FileCsv";
-import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
 import { FolderOpen } from "@phosphor-icons/react/dist/csr/FolderOpen";
 import { Database } from "@phosphor-icons/react/dist/csr/Database";
 import { Question } from "@phosphor-icons/react/dist/csr/Question";
 import { Info } from "@phosphor-icons/react/dist/csr/Info";
-import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { CaretDoubleLeft } from "@phosphor-icons/react/dist/csr/CaretDoubleLeft";
@@ -32,12 +30,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/sponsors", label: "Sponsors", icon: Buildings, group: "primary" },
   { href: "/map", label: "Map", icon: MapTrifold, group: "primary" },
   { href: "/verify", label: "CSV Checker", icon: FileCsv, group: "primary" },
-  { href: "/changelog", label: "Changelog", icon: ClockCounterClockwise, group: "primary" },
   { href: "/browse", label: "Browse", icon: FolderOpen, group: "primary" },
   { href: "/methodology", label: "Data & methodology", icon: Database, group: "secondary" },
   { href: "/faq", label: "FAQs", icon: Question, group: "secondary" },
   { href: "/about", label: "About", icon: Info, group: "secondary" },
-  { href: "/sync-status", label: "Sync status", icon: ArrowsClockwise, group: "secondary" },
 ];
 
 const EMPLOYER_CTA_HREF = "https://www.annaizu.com/";

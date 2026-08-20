@@ -66,8 +66,7 @@ export default async function MethodologyPage() {
         <Section title="Sync cadence">
           <p>
             A sync runs automatically once a day at 06:00 UTC. It hashes the fetched file first - if it&apos;s byte-identical to
-            the last one processed, nothing else happens and that&apos;s recorded as a no-change run. A manual sync can also be
-            triggered from the sync status page.
+            the last one processed, nothing else happens and that&apos;s recorded as a no-change run.
           </p>
         </Section>
 
@@ -100,12 +99,9 @@ export default async function MethodologyPage() {
         <Section title="History & snapshots">
           <p>
             Every publish that changes the file is kept as a gzipped snapshot, and every individual sponsor-level change
-            (added, removed, rating changed, route added/removed) is logged as an event - visible on the{" "}
-            <a href="/changelog" className="text-signal hover:underline">
-              changelog
-            </a>
-            . Analytics and KPI figures are derived directly from that event log, not a separately-maintained running total, so
-            they can never drift out of sync with the underlying history.
+            (added, removed, rating changed, route added/removed) is logged as an event. KPI figures are derived directly from
+            that event log, not a separately-maintained running total, so they can never drift out of sync with the underlying
+            history.
           </p>
         </Section>
       </div>
