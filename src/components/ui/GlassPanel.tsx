@@ -1,4 +1,5 @@
 import { createElement, type ElementType, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { cn } from "@/lib/cn";
 
 type Elevation = "base" | "raised" | "overlay";
 
@@ -20,7 +21,7 @@ type GlassPanelProps = {
 export function GlassPanel({ as = "div", elevation = "base", children, className = "", ...rest }: GlassPanelProps) {
   return createElement(
     as,
-    { className: `relative rounded-2xl border backdrop-blur-xl backdrop-saturate-150 ${ELEVATION_STYLES[elevation]} ${className}`, ...rest },
+    { className: cn("relative rounded-2xl border backdrop-blur-xl backdrop-saturate-150", ELEVATION_STYLES[elevation], className), ...rest },
     <span key="noise" aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl glass-noise opacity-[0.03]" />,
     children
   );

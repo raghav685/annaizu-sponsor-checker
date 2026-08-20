@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useExplorerStore } from "@/lib/store";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ALL_REGIONS, ALL_SECTORS, RATING_OPTIONS, SPONSOR_TYPE_OPTIONS, SORT_OPTIONS, routeGroupOf } from "@/lib/constants";
 import { ROUTE_RANGE_CEILING, activeFilterCount } from "@/lib/filterState";
 import { GlassPanel } from "@/components/ui/GlassPanel";
@@ -23,6 +24,8 @@ export function Sidebar() {
   const resultIds = useExplorerStore((s) => s.result.ids);
   const sidebarOpen = useExplorerStore((s) => s.sidebarOpen);
   const setSidebarOpen = useExplorerStore((s) => s.setSidebarOpen);
+  const isDrawerViewport = useMediaQuery("(max-width: 1023px)");
+  const drawerClosed = isDrawerViewport && !sidebarOpen;
 
   const stats = resultStats ?? globalStats;
 
@@ -83,6 +86,7 @@ export function Sidebar() {
         as="aside"
         elevation="raised"
         aria-label="Filters"
+        inert={drawerClosed}
         className={`fixed inset-y-0 left-0 z-[var(--z-sidebar)] w-[19rem] overflow-y-auto rounded-none border-y-0 border-l-0 p-5 transition-transform duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:translate-x-0 lg:rounded-2xl lg:border ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
