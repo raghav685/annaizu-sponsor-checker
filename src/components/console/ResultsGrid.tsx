@@ -65,7 +65,7 @@ export function ResultsGrid({ statusFilter }: { statusFilter?: "active" | "suspe
     focusRow(next);
   }
 
-  if (!sponsorsLoaded) return <SkeletonGrid density={density} />;
+  if (!sponsorsLoaded) return <SkeletonGrid density={density} isCardMode={isCardMode} />;
   if (ids.length === 0) return <EmptyState />;
 
   return (
