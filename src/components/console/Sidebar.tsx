@@ -98,7 +98,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-5 pb-28">
           <FieldsetGroup legend="Region">
             <div className="max-h-48 space-y-1.5 overflow-y-auto">
               {ALL_REGIONS.map((region) => (
@@ -173,9 +173,9 @@ export function Sidebar() {
           </FieldsetGroup>
 
           <FieldsetGroup legend="Sector (inferred)">
-            <details className="mb-2 rounded-md bg-white/[0.03] px-2.5 py-1.5 text-xs text-mist-dim">
+            <details className="group mb-2 rounded-md bg-white/[0.03] px-2.5 py-1.5 text-xs text-mist-dim">
               <summary className="cursor-pointer select-none">How this is derived</summary>
-              <p className="mt-1.5 leading-relaxed">
+              <p className="mt-1.5 hidden leading-relaxed group-open:block">
                 Sector is guessed from keywords in the organisation name (e.g. &quot;care&quot;, &quot;construction&quot;).
                 It is not part of the official Home Office register and will be wrong for some organisations.
               </p>
@@ -256,13 +256,13 @@ export function Sidebar() {
           <div className="flex gap-2">
             <button
               onClick={copyShareableLink}
-              className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
+              className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-white/[0.03] py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
             >
               Copy link
             </button>
             <button
               onClick={handleExport}
-              className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
+              className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-white/[0.03] py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
             >
               Export CSV
             </button>

@@ -37,7 +37,7 @@ export function SearchBar() {
       : [];
 
   return (
-    <div className="relative flex-1">
+    <div className="relative min-w-0 flex-1">
       <div className="flex items-center gap-2">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -46,7 +46,7 @@ export function SearchBar() {
         >
           <List className="h-5 w-5" />
         </button>
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <MagnifyingGlass className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mist-dim" />
           <input
             ref={inputRef}

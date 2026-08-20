@@ -17,7 +17,7 @@ export function ChartCard({
   return (
     <GlassPanel elevation="base" className="flex flex-col p-4">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="font-display text-sm text-mist">{title}</h3>
+        <h3 className="min-w-0 truncate font-display text-sm text-mist">{title}</h3>
         <span className="shrink-0 font-mono text-[10.5px] text-mist-dim">
           {shown.toLocaleString()} of {total.toLocaleString()}
         </span>

@@ -63,7 +63,7 @@ function NavLink({
     <Link
       href={href}
       title={collapsed ? label : undefined}
-      className={`flex items-center gap-3 rounded-lg px-2.5 py-2 font-mono text-xs transition-colors ${
+      className={`flex items-center gap-3 rounded-lg px-2.5 py-3.5 font-mono text-xs transition-colors ${
         active ? "bg-white/[0.06] text-signal" : "text-mist-dim hover:bg-white/[0.04] hover:text-mist"
       }`}
     >
@@ -80,7 +80,7 @@ function EmployerCta({ collapsed }: { collapsed?: boolean }) {
       target="_blank"
       rel="noopener"
       title={collapsed ? "For Employers" : undefined}
-      className="flex items-center gap-3 rounded-lg border border-signal/40 bg-signal/10 px-2.5 py-2 font-mono text-xs text-signal transition-colors hover:bg-signal/20"
+      className="flex items-center gap-3 rounded-lg border border-signal/40 bg-signal/10 px-2.5 py-3.5 font-mono text-xs text-signal transition-colors hover:bg-signal/20"
     >
       <ArrowSquareOut className="h-4 w-4 shrink-0" />
       {!collapsed && <span className="truncate">For Employers</span>}
@@ -127,13 +127,13 @@ export function AppSidebar() {
 
         <details className="group" open={secondaryHasActive}>
           <summary
-            className="flex cursor-pointer select-none items-center gap-3 rounded-lg px-2.5 py-2 font-mono text-xs text-mist-dim transition-colors marker:content-none hover:bg-white/[0.04] hover:text-mist"
+            className="flex cursor-pointer select-none items-center gap-3 rounded-lg px-2.5 py-3.5 font-mono text-xs text-mist-dim transition-colors marker:content-none hover:bg-white/[0.04] hover:text-mist"
             title={collapsed ? "More" : undefined}
           >
             <CaretDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
             {!collapsed && <span className="flex-1 truncate">More</span>}
           </summary>
-          <div className="mt-1 space-y-1">
+          <div className="mt-1 hidden space-y-1 group-open:block">
             {secondaryItems.map((item) => (
               <NavLink key={item.href} {...item} active={isNavItemActive(pathname, item.href)} collapsed={collapsed} />
             ))}
@@ -155,7 +155,7 @@ function MobileNavLink({ href, label, active }: { href: string; label: string; a
   return (
     <Link
       href={href}
-      className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-xs transition-colors ${
+      className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-3.5 font-mono text-xs transition-colors ${
         active ? "bg-white/[0.06] text-signal" : "text-mist-dim hover:text-mist"
       }`}
     >
@@ -175,7 +175,7 @@ export function MobileNavBar() {
       aria-label="Site navigation"
       className="sticky top-0 z-[var(--z-nav)] flex items-center gap-1 border-b border-hairline bg-void/90 px-3 py-2 backdrop-blur-xl lg:hidden"
     >
-      <Link href="/" className="mr-1 shrink-0">
+      <Link href="/" className="mr-1 flex shrink-0 items-center justify-center p-2.5">
         <Image src="/brand/annaizu-mark-square.png" alt="Annaizu" width={70} height={70} className="h-6 w-6" />
       </Link>
       <div className="flex flex-1 items-center gap-1 overflow-x-auto">
@@ -186,7 +186,7 @@ export function MobileNavBar() {
           href={EMPLOYER_CTA_HREF}
           target="_blank"
           rel="noopener"
-          className="shrink-0 whitespace-nowrap rounded-lg border border-signal/40 bg-signal/10 px-2.5 py-1.5 font-mono text-xs text-signal"
+          className="shrink-0 whitespace-nowrap rounded-lg border border-signal/40 bg-signal/10 px-2.5 py-3.5 font-mono text-xs text-signal"
         >
           For Employers
         </a>
@@ -197,19 +197,19 @@ export function MobileNavBar() {
             renders as a real sheet below the bar instead of being cut off. */}
         <details className={`group relative shrink-0 ${secondaryHasActive ? "text-signal" : ""}`}>
           <summary
-            className={`flex cursor-pointer select-none items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-xs transition-colors marker:content-none ${
+            className={`flex cursor-pointer select-none items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-3.5 font-mono text-xs transition-colors marker:content-none ${
               secondaryHasActive ? "bg-white/[0.06] text-signal" : "text-mist-dim hover:text-mist"
             }`}
           >
             More
             <CaretDown className="h-3 w-3 shrink-0 transition-transform group-open:rotate-180" />
           </summary>
-          <div className="fixed left-3 right-3 top-[52px] z-50 space-y-1 rounded-xl border border-hairline-strong bg-void/95 p-2 shadow-xl backdrop-blur-xl">
+          <div className="fixed left-3 right-3 top-[52px] z-50 hidden space-y-1 rounded-xl border border-hairline-strong bg-void/95 p-2 shadow-xl backdrop-blur-xl group-open:block">
             {secondaryItems.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
-                className={`block rounded-lg px-3 py-2 font-mono text-xs transition-colors ${
+                className={`block rounded-lg px-3 py-3.5 font-mono text-xs transition-colors ${
                   isNavItemActive(pathname, href) ? "bg-white/[0.06] text-signal" : "text-mist-dim hover:bg-white/[0.04] hover:text-mist"
                 }`}
               >

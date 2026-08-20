@@ -135,7 +135,7 @@ export default function FaqPage() {
                 <span className="mr-2 inline-block text-signal transition-transform group-open:rotate-90">›</span>
                 {item.q}
               </summary>
-              <div className="mt-3 pl-4 text-sm leading-relaxed text-mist-dim">{item.a}</div>
+              <div className="mt-3 hidden pl-4 text-sm leading-relaxed text-mist-dim group-open:block">{item.a}</div>
             </GlassPanel>
           ))}
         </div>

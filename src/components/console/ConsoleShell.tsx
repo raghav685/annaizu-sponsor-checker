@@ -43,7 +43,7 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
         <div className="border-t border-hairline pt-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-mono text-xs uppercase tracking-wide text-mist-dim">Search the register</h2>
-            <div className="flex gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+            <div className="flex flex-wrap gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
               {STATUS_TABS.map((t) => (
                 <button
                   key={t.key}
