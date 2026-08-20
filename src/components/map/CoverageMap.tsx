@@ -37,9 +37,12 @@ export function CoverageMap({ rows }: { rows: TownCoverageRow[] }) {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
       <div className="order-2 lg:order-1">
         <GlassPanel elevation="raised" className="relative h-[26rem] overflow-hidden lg:h-[36rem]">
-          <LicenceField townCounts={townCounts} className="h-full w-full" />
+          <LicenceField townCounts={townCounts} className="h-full w-full" interactive />
           <div className="pointer-events-none absolute bottom-4 left-4 font-mono text-xs text-mist-dim">
             {total.toLocaleString()} active sponsor{total === 1 ? "" : "s"} across {sortedTowns.length.toLocaleString()} places
+          </div>
+          <div className="pointer-events-none absolute right-4 top-4 font-mono text-[10.5px] text-mist-dim/70">
+            Drag to rotate · Scroll to zoom · Click a node to explore
           </div>
         </GlassPanel>
 

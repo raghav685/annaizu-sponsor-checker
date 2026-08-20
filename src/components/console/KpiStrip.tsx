@@ -37,14 +37,17 @@ function SyncBadge({ finishedAt }: { finishedAt: string | null }) {
   );
 }
 
-function Tile({ label, value, icon: TileIcon, color }: { label: string; value: string; icon: Icon; color: string }) {
+// `primary` gives the one headline metric (active sponsors) a size step up -
+// the other four are equally-weighted supporting figures, not five things
+// competing for the same attention.
+function Tile({ label, value, icon: TileIcon, color, primary = false }: { label: string; value: string; icon: Icon; color: string; primary?: boolean }) {
   return (
-    <GlassPanel elevation="base" className="min-w-0 flex-1 p-4">
+    <GlassPanel elevation="base" className={`min-w-0 flex-1 p-4 ${primary ? "sm:flex-[1.4]" : ""}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] uppercase tracking-wide text-mist-dim/70">{label}</p>
         <TileIcon className={`h-4 w-4 shrink-0 ${color}`} />
       </div>
-      <p className={`mt-2.5 font-display text-xl font-semibold leading-none lg:text-2xl ${color}`}>{value}</p>
+      <p className={`mt-2.5 font-display font-semibold leading-none ${color} ${primary ? "text-2xl lg:text-3xl" : "text-xl lg:text-2xl"}`}>{value}</p>
     </GlassPanel>
   );
 }
@@ -60,7 +63,7 @@ export function KpiStrip({ kpi }: { kpi: KpiSummary }) {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Tile label="Active sponsors" value={kpi.activeCount.toLocaleString()} icon={Buildings} color="text-mist" />
+        <Tile label="Active sponsors" value={kpi.activeCount.toLocaleString()} icon={Buildings} color="text-mist" primary />
         <Tile
           label="Added (latest publish)"
           value={publish ? `+${publish.addedCount.toLocaleString()}` : "—"}

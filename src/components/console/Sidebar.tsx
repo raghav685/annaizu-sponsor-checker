@@ -76,14 +76,14 @@ export function Sidebar() {
         <button
           aria-label="Close filters"
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-[44] bg-void/70 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[var(--z-sidebar-scrim)] bg-void/70 backdrop-blur-sm lg:hidden"
         />
       )}
       <GlassPanel
         as="aside"
         elevation="raised"
         aria-label="Filters"
-        className={`fixed inset-y-0 left-0 z-[45] w-[19rem] overflow-y-auto rounded-none border-y-0 border-l-0 p-5 transition-transform duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:translate-x-0 lg:rounded-2xl lg:border ${
+        className={`fixed inset-y-0 left-0 z-[var(--z-sidebar)] w-[19rem] overflow-y-auto rounded-none border-y-0 border-l-0 p-5 transition-transform duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:translate-x-0 lg:rounded-2xl lg:border ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >

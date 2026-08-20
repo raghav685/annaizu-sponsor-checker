@@ -97,7 +97,7 @@ export function AppSidebar() {
 
   return (
     <aside
-      className={`sticky top-0 z-[40] hidden h-[100dvh] shrink-0 flex-col border-r border-hairline bg-void/95 backdrop-blur-xl lg:flex ${
+      className={`sticky top-0 z-[var(--z-nav)] hidden h-[100dvh] shrink-0 flex-col border-r border-hairline bg-void/95 backdrop-blur-xl lg:flex ${
         collapsed ? "w-16" : "w-60"
       } transition-[width] duration-200`}
     >
@@ -173,7 +173,7 @@ export function MobileNavBar() {
   return (
     <nav
       aria-label="Site navigation"
-      className="sticky top-0 z-[40] flex items-center gap-1 border-b border-hairline bg-void/90 px-3 py-2 backdrop-blur-xl lg:hidden"
+      className="sticky top-0 z-[var(--z-nav)] flex items-center gap-1 border-b border-hairline bg-void/90 px-3 py-2 backdrop-blur-xl lg:hidden"
     >
       <Link href="/" className="mr-1 shrink-0">
         <Image src="/brand/annaizu-mark-square.png" alt="Annaizu" width={70} height={70} className="h-6 w-6" />

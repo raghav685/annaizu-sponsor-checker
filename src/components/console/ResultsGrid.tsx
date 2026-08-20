@@ -3,10 +3,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useExplorerStore } from "@/lib/store";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { GlassPanel } from "@/components/ui/GlassPanel";
-import { ROW_HEIGHTS, TABLE_MIN_WIDTH_CLASS, SponsorTableHeader, SponsorTableRow } from "./SponsorTableRow";
+import { ROW_HEIGHTS, CARD_HEIGHT, TABLE_MIN_WIDTH_CLASS, SponsorTableHeader, SponsorTableRow, SponsorCard } from "./SponsorTableRow";
 import { EmptyState } from "./EmptyState";
 import { SkeletonGrid } from "./SkeletonGrid";
+
+// Below `md` the 7-column grid has nothing left to compress into (see
+// TABLE_MIN_WIDTH_CLASS) - render SponsorCard instead of forcing a horizontal
+// scroll on a phone-width viewport.
+const CARD_BREAKPOINT = "(max-width: 767px)";
 
 // Active and Suspended are both drawn from the same underlying active-sponsor list (a
 // suspended sponsor is still active on the register, it just has a prior "removed" event
@@ -23,8 +29,9 @@ export function ResultsGrid({ statusFilter }: { statusFilter?: "active" | "suspe
   );
   const density = useExplorerStore((s) => s.filters.density);
   const sponsorsLoaded = useExplorerStore((s) => s.sponsors !== null);
+  const isCardMode = useMediaQuery(CARD_BREAKPOINT);
 
-  const rowHeight = ROW_HEIGHTS[density];
+  const rowHeight = isCardMode ? CARD_HEIGHT : ROW_HEIGHTS[density];
 
   const virtualizer = useVirtualizer({
     count: ids.length,
@@ -65,9 +72,15 @@ export function ResultsGrid({ statusFilter }: { statusFilter?: "active" | "suspe
     <GlassPanel elevation="base" className="flex h-full flex-col overflow-hidden">
       {/* One shared horizontal scroller for header + body, so columns never drift out of
           alignment - only the body underneath scrolls vertically on its own. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
-        <SponsorTableHeader />
-        <div ref={parentRef} onKeyDown={onKeyDown} className={`min-h-0 flex-1 overflow-y-auto ${TABLE_MIN_WIDTH_CLASS}`} role="grid" aria-label="Sponsor results">
+      <div className={`flex min-h-0 flex-1 flex-col ${isCardMode ? "" : "overflow-x-auto"}`}>
+        {!isCardMode && <SponsorTableHeader />}
+        <div
+          ref={parentRef}
+          onKeyDown={onKeyDown}
+          className={`min-h-0 flex-1 overflow-y-auto ${isCardMode ? "w-full" : TABLE_MIN_WIDTH_CLASS}`}
+          role="grid"
+          aria-label="Sponsor results"
+        >
           <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const sponsor = sponsorsById?.get(ids[virtualRow.index]);
@@ -79,7 +92,7 @@ export function ResultsGrid({ statusFilter }: { statusFilter?: "active" | "suspe
                   data-row-index={virtualRow.index}
                   style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}
                 >
-                  <SponsorTableRow sponsor={sponsor} height={rowHeight} />
+                  {isCardMode ? <SponsorCard sponsor={sponsor} height={rowHeight} /> : <SponsorTableRow sponsor={sponsor} height={rowHeight} />}
                 </div>
               );
             })}

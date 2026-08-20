@@ -34,7 +34,7 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
   return (
     <main className="relative z-content flex min-h-[100dvh] bg-void">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 lg:p-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 lg:p-5">
         <h1 className="font-display text-lg font-semibold text-mist lg:text-xl">
           Search the UK register of licensed sponsors
         </h1>
@@ -66,7 +66,7 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
               <div className="mt-3">
                 <SearchBar />
               </div>
-              <p aria-live="polite" className="mt-2.5 font-mono text-xs text-mist-dim">
+              <p aria-live="polite" className="mt-3 font-mono text-xs text-mist-dim">
                 {sponsorsLoaded ? (
                   <>
                     <span className="text-signal">{resultCount.toLocaleString()}</span> of {totalCount.toLocaleString()} sponsors

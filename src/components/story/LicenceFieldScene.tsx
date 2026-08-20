@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFrame } from "@react-three/fiber";
-import { Line, Html } from "@react-three/drei";
+import { Line, Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { TOWN_COORDS, projectUk } from "@/lib/townCoordinates";
 import { GB_OUTLINE, NI_OUTLINE } from "@/lib/ukOutline";
@@ -24,10 +25,11 @@ interface TownDatum {
   targetScale: number;
 }
 
-function Node({ datum }: { datum: TownDatum }) {
+function Node({ datum, interactive }: { datum: TownDatum; interactive: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const current = useRef(0.001);
   const [hovered, setHovered] = useState(false);
+  const router = useRouter();
 
   useFrame(() => {
     const target = hovered ? datum.targetScale * 1.35 : datum.targetScale;
@@ -40,12 +42,22 @@ function Node({ datum }: { datum: TownDatum }) {
   return (
     <group ref={ref} position={[datum.x, datum.y, 0]}>
       <mesh
+        onClick={
+          interactive
+            ? (e) => {
+                e.stopPropagation();
+                router.push(`/browse/city/${encodeURIComponent(datum.name)}`);
+              }
+            : undefined
+        }
         onPointerOver={(e) => {
+          if (!interactive) return;
           e.stopPropagation();
           setHovered(true);
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={(e) => {
+          if (!interactive) return;
           e.stopPropagation();
           setHovered(false);
           document.body.style.cursor = "auto";
@@ -78,10 +90,12 @@ export function LicenceFieldScene({
   townCounts,
   autoRotate,
   reduced,
+  interactive = false,
 }: {
   townCounts: Record<string, number>;
   autoRotate: boolean;
   reduced: boolean;
+  interactive?: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -107,12 +121,24 @@ export function LicenceFieldScene({
   });
 
   return (
-    <group ref={groupRef} rotation={[0.15, 0, 0]}>
-      <Line points={gbLine} color="#4fe8c9" lineWidth={1.2} transparent opacity={0.45} />
-      <Line points={niLine} color="#4fe8c9" lineWidth={1.2} transparent opacity={0.45} />
-      {nodes.map((n) => (
-        <Node key={n.name} datum={n} />
-      ))}
-    </group>
+    <>
+      {interactive && (
+        <OrbitControls
+          enablePan={false}
+          minDistance={4}
+          maxDistance={16}
+          autoRotate={!reduced}
+          autoRotateSpeed={0.6}
+          enableDamping
+        />
+      )}
+      <group ref={groupRef} rotation={[0.15, 0, 0]}>
+        <Line points={gbLine} color="#4fe8c9" lineWidth={1.2} transparent opacity={0.45} />
+        <Line points={niLine} color="#4fe8c9" lineWidth={1.2} transparent opacity={0.45} />
+        {nodes.map((n) => (
+          <Node key={n.name} datum={n} interactive={interactive} />
+        ))}
+      </group>
+    </>
   );
 }

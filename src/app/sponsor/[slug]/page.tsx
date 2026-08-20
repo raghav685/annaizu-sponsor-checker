@@ -44,7 +44,7 @@ export default async function SponsorDetailPage({ params }: Props) {
   const others = await getOtherSponsorsInTown(sponsor.town, sponsor.id);
 
   return (
-    <main className="relative min-h-[100dvh] bg-void px-6 py-16 lg:px-16">
+    <main className="relative min-h-[100dvh] bg-void px-6 py-12 lg:px-16">
       <div className="mx-auto max-w-3xl">
         <Breadcrumbs
           crumbs={[
@@ -101,7 +101,7 @@ export default async function SponsorDetailPage({ params }: Props) {
           </div>
 
           <div className="mt-8">
-            <h2 className="mb-2 font-mono text-xs uppercase tracking-wide text-mist-dim">What this sponsor licence means</h2>
+            <h2 className="mb-3 font-mono text-xs uppercase tracking-wide text-mist-dim">What this sponsor licence means</h2>
             <p className="max-w-xl text-sm leading-relaxed text-mist-dim">
               A sponsor licence lets this organisation sponsor eligible workers on the routes listed above. It is not
               a guarantee of current vacancies, and does not mean this organisation will sponsor any particular
