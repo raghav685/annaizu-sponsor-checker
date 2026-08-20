@@ -2,6 +2,28 @@
 
 import { useEffect, useRef } from "react";
 import { useExplorerStore } from "@/lib/store";
+import type { WorkerSponsor } from "@/workers/filter.worker";
+
+// postMessage structured-clones its payload - sending the full Sponsor[] (with
+// firstSeenAt/status/website/linkedin, and a whole per-route `ratings` array)
+// meant the app held two complete copies of the ~30-40MB register at once (main
+// thread + worker), which was crashing mobile Safari during initial load, well
+// before the table itself ever renders. The worker only ever needs these fields.
+function toWorkerSponsors(sponsors: NonNullable<ReturnType<typeof useExplorerStore.getState>["sponsors"]>): WorkerSponsor[] {
+  return sponsors.map((s) => ({
+    id: s.id,
+    name: s.name,
+    region: s.region,
+    town: s.town,
+    county: s.county,
+    sector: s.sector,
+    routes: s.routes,
+    routeCount: s.routeCount,
+    rating: s.rating,
+    sponsorType: s.sponsorType,
+    hasARating: s.ratings.includes("A"),
+  }));
+}
 
 export function useFilterWorker() {
   const workerRef = useRef<Worker | null>(null);
@@ -56,7 +78,7 @@ export function useFilterWorker() {
   // Initialise the worker's dataset once sponsors are loaded.
   useEffect(() => {
     if (!sponsors || !workerRef.current) return;
-    workerRef.current.postMessage({ type: "init", sponsors });
+    workerRef.current.postMessage({ type: "init", sponsors: toWorkerSponsors(sponsors) });
   }, [sponsors]);
 
   // Debounced query on every filter change.

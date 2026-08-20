@@ -1,13 +1,34 @@
 /// <reference lib="webworker" />
 import Fuse from "fuse.js";
-import type { Sponsor, Stats } from "../lib/types";
+import type { Stats } from "../lib/types";
 import type { FilterState } from "../lib/filterState";
 import { ALL_REGIONS } from "../lib/constants";
 
-let sponsors: Sponsor[] = [];
-let fuse: Fuse<Sponsor> | null = null;
+// A deliberately narrower shape than the main thread's full Sponsor[] - this is
+// what actually crosses postMessage's structured-clone boundary into the worker.
+// The full array (with firstSeenAt/status/website/linkedin, and a full per-route
+// `ratings` array instead of one boolean) was being deep-cloned wholesale here,
+// meaning the app held two complete copies of the ~30-40MB register in memory
+// at once (main thread + worker) - the actual cause of mobile Safari OOM kills
+// during initial load, well before the (already-virtualized) table ever renders.
+export interface WorkerSponsor {
+  id: string;
+  name: string;
+  region: string;
+  town: string;
+  county: string;
+  sector: string;
+  routes: string[];
+  routeCount: number;
+  rating: string;
+  sponsorType: string;
+  hasARating: boolean;
+}
 
-function buildStats(subset: Sponsor[]): Stats {
+let sponsors: WorkerSponsor[] = [];
+let fuse: Fuse<WorkerSponsor> | null = null;
+
+function buildStats(subset: WorkerSponsor[]): Stats {
   const countBy = (values: string[]): Record<string, number> => {
     const out: Record<string, number> = {};
     for (const v of values) out[v] = (out[v] ?? 0) + 1;
@@ -69,7 +90,7 @@ function buildStats(subset: Sponsor[]): Stats {
   };
 }
 
-function matchesFilters(s: Sponsor, f: FilterState): boolean {
+function matchesFilters(s: WorkerSponsor, f: FilterState): boolean {
   if (f.regions.length && !f.regions.includes(s.region)) return false;
   if (f.towns.length && !f.towns.includes(s.town)) return false;
   if (f.counties.length && !f.counties.includes(s.county)) return false;
@@ -78,13 +99,13 @@ function matchesFilters(s: Sponsor, f: FilterState): boolean {
   if (f.rating !== "All" && s.rating !== f.rating) return false;
   if (f.sponsorType !== "All" && s.sponsorType !== f.sponsorType) return false;
   if (s.routeCount < f.minRoutes || s.routeCount > f.maxRoutes) return false;
-  if (f.aRatedOnly && !s.ratings.includes("A")) return false;
+  if (f.aRatedOnly && !s.hasARating) return false;
   if (f.multiRouteOnly && s.routeCount <= 1) return false;
   if (f.hideUnknownRegion && s.region === "Unknown") return false;
   return true;
 }
 
-function sortSponsors(list: Sponsor[], sort: FilterState["sort"]): Sponsor[] {
+function sortSponsors(list: WorkerSponsor[], sort: FilterState["sort"]): WorkerSponsor[] {
   switch (sort) {
     case "az":
       return [...list].sort((a, b) => a.name.localeCompare(b.name));
@@ -100,7 +121,7 @@ function sortSponsors(list: Sponsor[], sort: FilterState["sort"]): Sponsor[] {
 }
 
 function runQuery(filters: FilterState) {
-  let base: Sponsor[];
+  let base: WorkerSponsor[];
   if (filters.search.trim()) {
     base = (fuse?.search(filters.search.trim()) ?? []).map((r) => r.item);
   } else {
@@ -117,7 +138,7 @@ function runQuery(filters: FilterState) {
 self.onmessage = (e: MessageEvent) => {
   const msg = e.data;
   if (msg.type === "init") {
-    sponsors = msg.sponsors as Sponsor[];
+    sponsors = msg.sponsors as WorkerSponsor[];
     fuse = new Fuse(sponsors, { keys: ["name"], threshold: 0.32, includeScore: false });
     (self as unknown as Worker).postMessage({ type: "ready" });
     return;

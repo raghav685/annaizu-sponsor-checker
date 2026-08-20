@@ -65,9 +65,11 @@ const STATES = {
   },
 };
 
-export default async function (page) {
+async function setupState(page) {
   const state = process.env.AUDIT_STATE;
   const fn = STATES[state];
   if (!fn) throw new Error(`Unknown AUDIT_STATE "${state}" - expected one of: ${Object.keys(STATES).join(", ")}`);
   await fn(page);
 }
+
+export default setupState;
