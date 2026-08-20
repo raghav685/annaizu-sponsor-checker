@@ -82,7 +82,7 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
             </>
           )}
         </div>
-        <div className="min-h-[32rem] flex-1 xl:h-[calc(100dvh-11rem)]">
+        <div className="h-[32rem] xl:h-[calc(100dvh-11rem)]">
           {statusTab === "revoked" ? <RemovedSponsorsPanel /> : <ResultsGrid statusFilter={statusTab} />}
         </div>
       </div>
