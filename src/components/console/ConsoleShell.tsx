@@ -12,6 +12,7 @@ import { ChartsPanel } from "./ChartsPanel";
 import { KpiStrip } from "./KpiStrip";
 import { AnalyticsSection } from "./AnalyticsSection";
 import type { KpiSummary, PublishTrendPoint } from "@/lib/dataQueries";
+import { formatNumber } from "@/lib/formatNumber";
 
 const STATUS_TABS = [
   { key: "active", label: "Active" },
@@ -70,7 +71,7 @@ export function ConsoleShell({ kpi, trend }: { kpi: KpiSummary | null; trend: Pu
               <p aria-live="polite" className="mt-3 font-mono text-xs text-mist-dim">
                 {sponsorsLoaded ? (
                   <>
-                    <span className="text-signal">{resultCount.toLocaleString()}</span> of {totalCount.toLocaleString()} sponsors
+                    <span className="text-signal">{formatNumber(resultCount)}</span> of {formatNumber(totalCount)} sponsors
                   </>
                 ) : (
                   "loading register..."

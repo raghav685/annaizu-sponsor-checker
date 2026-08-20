@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { formatNumber } from "@/lib/formatNumber";
 
 export function AnimatedCounter({
   value,
@@ -22,7 +23,7 @@ export function AnimatedCounter({
     const el = ref.current;
     if (!el || !triggerOnMount) return;
     if (reduced || value === 0) {
-      el.textContent = value.toLocaleString() + suffix;
+      el.textContent = formatNumber(value) + suffix;
       return;
     }
     const counter = { n: 0 };
@@ -31,7 +32,7 @@ export function AnimatedCounter({
       duration: 1.6,
       ease: "power2.out",
       onUpdate: () => {
-        if (el) el.textContent = Math.round(counter.n).toLocaleString() + suffix;
+        if (el) el.textContent = formatNumber(Math.round(counter.n)) + suffix;
       },
     });
     return () => {
@@ -45,7 +46,7 @@ export function AnimatedCounter({
   // doesn't depend on what this initial text was.
   return (
     <span ref={ref} className={className}>
-      {value.toLocaleString()}
+      {formatNumber(value)}
       {suffix}
     </span>
   );

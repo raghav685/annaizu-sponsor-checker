@@ -3,6 +3,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { syncRuns } from "@/db/schema";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { formatNumber } from "@/lib/formatNumber";
 
 export const dynamic = "force-dynamic";
 
@@ -68,10 +69,10 @@ export default async function SyncStatusPage() {
                   </td>
                   <td className="px-4 py-3 text-mist-dim">{formatDate(r.startedAt)}</td>
                   <td className="px-4 py-3 text-mist-dim">{formatDate(r.registerPublicUpdatedAt)}</td>
-                  <td className="px-4 py-3 text-mist-dim">{r.rowCount?.toLocaleString() ?? "-"}</td>
-                  <td className="px-4 py-3 text-signal">{r.sponsorsAddedCount?.toLocaleString() ?? "-"}</td>
-                  <td className="px-4 py-3 text-ember">{r.sponsorsRemovedCount?.toLocaleString() ?? "-"}</td>
-                  <td className="px-4 py-3 text-mist-dim">{r.sponsorsUpdatedCount?.toLocaleString() ?? "-"}</td>
+                  <td className="px-4 py-3 text-mist-dim">{r.rowCount != null ? formatNumber(r.rowCount) : "-"}</td>
+                  <td className="px-4 py-3 text-signal">{r.sponsorsAddedCount != null ? formatNumber(r.sponsorsAddedCount) : "-"}</td>
+                  <td className="px-4 py-3 text-ember">{r.sponsorsRemovedCount != null ? formatNumber(r.sponsorsRemovedCount) : "-"}</td>
+                  <td className="px-4 py-3 text-mist-dim">{r.sponsorsUpdatedCount != null ? formatNumber(r.sponsorsUpdatedCount) : "-"}</td>
                 </tr>
               ))}
               {runs.length === 0 && (

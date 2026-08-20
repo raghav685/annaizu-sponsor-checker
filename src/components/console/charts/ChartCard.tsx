@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { formatNumber } from "@/lib/formatNumber";
 
 export function ChartCard({
   title,
@@ -19,7 +20,7 @@ export function ChartCard({
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="min-w-0 truncate font-display text-sm text-mist">{title}</h3>
         <span className="shrink-0 font-mono text-[10.5px] text-mist-dim">
-          {shown.toLocaleString()} of {total.toLocaleString()}
+          {formatNumber(shown)} of {formatNumber(total)}
         </span>
       </div>
       <div className="min-h-0 flex-1">{children}</div>

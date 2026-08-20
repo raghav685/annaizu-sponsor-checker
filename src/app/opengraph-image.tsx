@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { loadMetaForFrontend } from "@/lib/dataQueries";
+import { formatNumber } from "@/lib/formatNumber";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -8,7 +9,7 @@ export default async function Image() {
   let totalSponsors = "127,000+";
   try {
     const meta = await loadMetaForFrontend();
-    totalSponsors = Number(meta.sponsorCount).toLocaleString();
+    totalSponsors = formatNumber(Number(meta.sponsorCount));
   } catch {
     // fall back to the default string above
   }

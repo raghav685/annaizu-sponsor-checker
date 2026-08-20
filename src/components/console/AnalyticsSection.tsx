@@ -5,6 +5,7 @@ import { GlassPanel } from "@/components/ui/GlassPanel";
 import { LineTrendChart } from "./charts/LineTrendChart";
 import { CHART_COLORS } from "./charts/chartTheme";
 import type { PublishTrendPoint } from "@/lib/dataQueries";
+import { formatNumber } from "@/lib/formatNumber";
 
 const RANGES = [
   { key: "7d", label: "Last 7 days", days: 7 },
@@ -71,7 +72,7 @@ export function AnalyticsSection({ trend }: { trend: PublishTrendPoint[] }) {
                 <h3 className="font-display text-sm text-mist">Sponsors added over time</h3>
                 <p className="font-mono text-[10.5px] text-mist-dim">New sponsors added to the register in this period</p>
               </div>
-              <span className="shrink-0 font-mono text-sm text-signal">+{totalAdded.toLocaleString()}</span>
+              <span className="shrink-0 font-mono text-sm text-signal">+{formatNumber(totalAdded)}</span>
             </div>
             <LineTrendChart data={addedSeries} color={CHART_COLORS.signal} />
           </GlassPanel>
@@ -83,7 +84,7 @@ export function AnalyticsSection({ trend }: { trend: PublishTrendPoint[] }) {
               </div>
               <span className={`shrink-0 font-mono text-sm ${netChange >= 0 ? "text-signal" : "text-ember"}`}>
                 {netChange >= 0 ? "+" : ""}
-                {netChange.toLocaleString()}
+                {formatNumber(netChange)}
               </span>
             </div>
             <LineTrendChart data={activeSeries} color={CHART_COLORS.ember} />

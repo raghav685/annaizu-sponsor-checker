@@ -9,6 +9,7 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useInView } from "@/hooks/useInView";
 import { RevealHeadline } from "./RevealHeadline";
 import type { Stats } from "@/lib/types";
+import { formatNumber } from "@/lib/formatNumber";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -70,7 +71,7 @@ export function GeographySection({ initialStats }: { initialStats: Stats | null 
           {regions.map(([name, count]) => (
             <div key={name} className="geo-row flex items-center justify-between">
               <span className="text-mist">{name}</span>
-              <span className="text-signal">{count.toLocaleString()}</span>
+              <span className="text-signal">{formatNumber(count)}</span>
             </div>
           ))}
         </div>

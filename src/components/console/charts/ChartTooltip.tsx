@@ -1,3 +1,5 @@
+import { formatNumber } from "@/lib/formatNumber";
+
 interface TooltipEntry {
   name?: string;
   value?: number | string;
@@ -17,7 +19,7 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
       {label !== undefined && <p className="mb-1 text-mist-dim">{label}</p>}
       {payload.map((entry, i) => (
         <p key={entry.dataKey?.toString() ?? i} className="text-mist">
-          {entry.name}: <span className="text-signal">{Number(entry.value).toLocaleString()}</span>
+          {entry.name}: <span className="text-signal">{formatNumber(Number(entry.value))}</span>
         </p>
       ))}
     </div>

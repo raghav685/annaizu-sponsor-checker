@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { formatNumber } from "@/lib/formatNumber";
 
 export function SegmentedControl<T extends string>({
   options,
@@ -102,7 +103,7 @@ export function CheckboxRow({
         <span className="truncate text-mist">{label}</span>
       </span>
       {typeof count === "number" && (
-        <span className="font-mono text-[11px] text-mist-dim">{count.toLocaleString()}</span>
+        <span className="font-mono text-[11px] text-mist-dim">{formatNumber(count)}</span>
       )}
     </label>
   );

@@ -7,6 +7,7 @@ import { Line, Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { TOWN_COORDS, projectUk } from "@/lib/townCoordinates";
 import { GB_OUTLINE, NI_OUTLINE } from "@/lib/ukOutline";
+import { formatNumber } from "@/lib/formatNumber";
 
 const SCALE = 5.5;
 
@@ -78,7 +79,7 @@ function Node({ datum, interactive }: { datum: TownDatum; interactive: boolean }
         <Html center distanceFactor={8} style={{ pointerEvents: "none" }}>
           <div className="whitespace-nowrap rounded-md border border-white/10 bg-void/95 px-2.5 py-1.5 font-mono text-[11px] text-mist shadow-lg">
             <span className="text-mist">{datum.name}</span>{" "}
-            <span className="text-signal">{datum.count.toLocaleString()}</span>
+            <span className="text-signal">{formatNumber(datum.count)}</span>
           </div>
         </Html>
       )}

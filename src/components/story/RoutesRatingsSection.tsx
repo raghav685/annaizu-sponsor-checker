@@ -7,6 +7,7 @@ import { useExplorerStore } from "@/lib/store";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { RevealHeadline } from "./RevealHeadline";
 import type { Stats } from "@/lib/types";
+import { formatNumber } from "@/lib/formatNumber";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -56,7 +57,7 @@ export function RoutesRatingsSection({ initialStats }: { initialStats: Stats | n
           <div key={r.name}>
             <div className="mb-1.5 flex items-baseline justify-between font-mono text-xs text-mist-dim">
               <span className="truncate pr-2">{r.name}</span>
-              <span className="shrink-0 text-signal">{r.count.toLocaleString()}</span>
+              <span className="shrink-0 text-signal">{formatNumber(r.count)}</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div

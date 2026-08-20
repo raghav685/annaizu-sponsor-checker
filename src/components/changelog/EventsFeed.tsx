@@ -5,6 +5,7 @@ import Link from "next/link";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import type { ChangelogEvent } from "@/lib/dataQueries";
 import { eventLabel, eventDetail } from "@/lib/changelogFormat";
+import { formatNumber } from "@/lib/formatNumber";
 
 const EVENT_COLOR: Record<string, string> = {
   added: "text-signal",
@@ -67,7 +68,7 @@ export function EventsFeed({ initialEvents, total }: { initialEvents: ChangelogE
             disabled={loading}
             className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal disabled:opacity-50"
           >
-            {loading ? "Loading…" : `Load more (${events.length.toLocaleString()} of ${total.toLocaleString()})`}
+            {loading ? "Loading…" : `Load more (${formatNumber(events.length)} of ${formatNumber(total)})`}
           </button>
           {error && <p className="font-mono text-[11px] text-ember">{error}</p>}
         </div>

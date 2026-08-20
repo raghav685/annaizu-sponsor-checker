@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useRef, useState } from "react";
 import { Chip } from "./Chip";
+import { formatNumber } from "@/lib/formatNumber";
 
 interface Option {
   name: string;
@@ -99,7 +100,7 @@ export function TypeaheadMultiSelect({
                 } ${isSelected ? "font-medium" : ""}`}
               >
                 <span className="truncate">{opt.name}</span>
-                <span className="font-mono text-[11px] text-mist-dim">{opt.count.toLocaleString()}</span>
+                <span className="font-mono text-[11px] text-mist-dim">{formatNumber(opt.count)}</span>
               </li>
             );
           })}

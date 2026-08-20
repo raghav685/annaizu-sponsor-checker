@@ -3,6 +3,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { CHART_COLORS } from "./chartTheme";
 import { ChartTooltip } from "./ChartTooltip";
+import { formatNumber } from "@/lib/formatNumber";
 
 const COLORS: Record<string, string> = {
   A: CHART_COLORS.signal,
@@ -55,7 +56,7 @@ export function RatingDonut({
         {data.map((d) => (
           <span key={d.name} className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: COLORS[d.name] }} />
-            {d.name} ({d.value.toLocaleString()})
+            {d.name} ({formatNumber(d.value)})
           </span>
         ))}
       </div>

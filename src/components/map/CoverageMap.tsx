@@ -7,6 +7,7 @@ import { GlassPanel } from "@/components/ui/GlassPanel";
 import { CheckboxRow, FieldsetGroup } from "@/components/ui/Controls";
 import { ALL_REGIONS, ALL_SECTORS } from "@/lib/constants";
 import type { TownCoverageRow } from "@/lib/dataQueries";
+import { formatNumber } from "@/lib/formatNumber";
 
 const LicenceField = dynamic(() => import("@/components/story/LicenceField").then((m) => m.LicenceField), { ssr: false });
 
@@ -39,7 +40,7 @@ export function CoverageMap({ rows }: { rows: TownCoverageRow[] }) {
         <GlassPanel elevation="raised" className="relative h-[26rem] overflow-hidden lg:h-[36rem]">
           <LicenceField townCounts={townCounts} className="h-full w-full" interactive />
           <div className="pointer-events-none absolute bottom-4 left-4 font-mono text-xs text-mist-dim">
-            {total.toLocaleString()} active sponsor{total === 1 ? "" : "s"} across {sortedTowns.length.toLocaleString()} places
+            {formatNumber(total)} active sponsor{total === 1 ? "" : "s"} across {formatNumber(sortedTowns.length)} places
           </div>
           <div className="pointer-events-none absolute right-4 top-4 font-mono text-[10.5px] text-mist-dim/70">
             Drag to rotate · Scroll to zoom · Click a node to explore
@@ -55,7 +56,7 @@ export function CoverageMap({ rows }: { rows: TownCoverageRow[] }) {
                   className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-mist transition-colors hover:bg-white/5 hover:text-signal"
                 >
                   <span className="truncate">{town}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-mist-dim">{count.toLocaleString()}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-mist-dim">{formatNumber(count)}</span>
                 </Link>
               </li>
             ))}

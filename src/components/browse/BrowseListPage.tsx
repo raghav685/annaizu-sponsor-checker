@@ -5,6 +5,7 @@ import { SponsorCard } from "@/components/console/SponsorCard";
 import type { Sponsor } from "@/lib/types";
 import type { Crumb } from "@/lib/seo";
 import Link from "next/link";
+import { formatNumber } from "@/lib/formatNumber";
 
 const PAGE_SIZE = 60;
 
@@ -37,7 +38,7 @@ export function BrowseListPage({
         <p className="mt-4 font-mono text-xs uppercase tracking-wide text-mist-dim/70">{kicker}</p>
         <h1 className="mt-1 font-display text-2xl font-semibold text-mist lg:text-3xl">{title}</h1>
         <p className="mt-2 font-mono text-sm text-mist-dim">
-          {sorted.length.toLocaleString()} active sponsor{sorted.length === 1 ? "" : "s"}
+          {formatNumber(sorted.length)} active sponsor{sorted.length === 1 ? "" : "s"}
           {registerDate ? ` · register date ${registerDate}` : ""}
         </p>
         <p className="mt-1 max-w-2xl font-mono text-xs text-mist-dim/70">

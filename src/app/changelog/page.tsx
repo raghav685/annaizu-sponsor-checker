@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { EventsFeed } from "@/components/changelog/EventsFeed";
 import { loadSyncRunHistory, loadRecentEvents, type SyncRunSummary } from "@/lib/dataQueries";
 import { buildMetadata } from "@/lib/seo";
+import { formatNumber } from "@/lib/formatNumber";
 
 export const revalidate = 300;
 
@@ -37,10 +38,10 @@ function RunRow({ run }: { run: SyncRunSummary }) {
       <td className={`whitespace-nowrap py-2.5 pr-4 font-mono text-xs ${STATUS_COLOR[run.status] ?? "text-mist-dim"}`}>
         {STATUS_LABEL[run.status] ?? run.status}
       </td>
-      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-signal">{run.addedCount != null ? `+${run.addedCount.toLocaleString()}` : "—"}</td>
-      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-ember">{run.removedCount != null ? run.removedCount.toLocaleString() : "—"}</td>
-      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-mist-dim">{run.updatedCount != null ? run.updatedCount.toLocaleString() : "—"}</td>
-      <td className="whitespace-nowrap py-2.5 font-mono text-xs text-mist-dim">{run.rowCount != null ? run.rowCount.toLocaleString() : "—"}</td>
+      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-signal">{run.addedCount != null ? `+${formatNumber(run.addedCount)}` : "—"}</td>
+      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-ember">{run.removedCount != null ? formatNumber(run.removedCount) : "—"}</td>
+      <td className="whitespace-nowrap py-2.5 pr-4 font-mono text-xs text-mist-dim">{run.updatedCount != null ? formatNumber(run.updatedCount) : "—"}</td>
+      <td className="whitespace-nowrap py-2.5 font-mono text-xs text-mist-dim">{run.rowCount != null ? formatNumber(run.rowCount) : "—"}</td>
     </tr>
   );
 }

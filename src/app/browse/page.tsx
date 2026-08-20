@@ -4,6 +4,7 @@ import { GlassPanel } from "@/components/ui/GlassPanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { loadBrowseIndex, type BrowseIndexEntry } from "@/lib/dataQueries";
 import { buildMetadata } from "@/lib/seo";
+import { formatNumber } from "@/lib/formatNumber";
 
 export const revalidate = 300;
 
@@ -28,7 +29,7 @@ function IndexColumn({ title, entries, hrefFor }: { title: string; entries: Brow
                 className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm text-mist transition-colors hover:bg-white/5 hover:text-signal"
               >
                 <span className="truncate">{e.name}</span>
-                <span className="shrink-0 font-mono text-[11px] text-mist-dim">{e.count.toLocaleString()}</span>
+                <span className="shrink-0 font-mono text-[11px] text-mist-dim">{formatNumber(e.count)}</span>
               </Link>
             </li>
           ))}

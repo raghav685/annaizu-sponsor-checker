@@ -9,6 +9,7 @@ import { WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import type { Icon } from "@phosphor-icons/react";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import type { KpiSummary } from "@/lib/dataQueries";
+import { formatNumber } from "@/lib/formatNumber";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -63,22 +64,22 @@ export function KpiStrip({ kpi }: { kpi: KpiSummary }) {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Tile label="Active sponsors" value={kpi.activeCount.toLocaleString()} icon={Buildings} color="text-mist" primary />
+        <Tile label="Active sponsors" value={formatNumber(kpi.activeCount)} icon={Buildings} color="text-mist" primary />
         <Tile
           label="Added (latest publish)"
-          value={publish ? `+${publish.addedCount.toLocaleString()}` : "—"}
+          value={publish ? `+${formatNumber(publish.addedCount)}` : "—"}
           icon={TrendUp}
           color="text-signal"
         />
         <Tile
           label="Removed from register"
-          value={publish ? publish.removedCount.toLocaleString() : "—"}
+          value={publish ? formatNumber(publish.removedCount) : "—"}
           icon={Prohibit}
           color="text-ember"
         />
         <Tile
           label="Updated (latest publish)"
-          value={publish ? publish.updatedCount.toLocaleString() : "—"}
+          value={publish ? formatNumber(publish.updatedCount) : "—"}
           icon={ArrowsClockwise}
           color="text-info"
         />
