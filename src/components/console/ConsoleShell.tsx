@@ -38,15 +38,17 @@ export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
         <h1 className="font-display text-lg font-semibold text-mist lg:text-xl">
           Search the UK register of licensed sponsors
         </h1>
-        {kpi && <KpiStrip kpi={kpi} />}
-        <ChartsPanel />
-        <div className="border-t border-hairline pt-5">
+        <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-mono text-xs uppercase tracking-wide text-mist-dim">Search the register</h2>
-            <div className="flex flex-wrap gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
+            <div role="tablist" aria-label="Sponsor status" className="flex flex-wrap gap-1 rounded-lg border border-white/10 bg-white/[0.03] p-1">
               {STATUS_TABS.map((t) => (
                 <button
                   key={t.key}
+                  role="tab"
+                  id={`status-tab-${t.key}`}
+                  aria-selected={statusTab === t.key}
+                  aria-controls="status-tabpanel"
                   onClick={() => setStatusTab(t.key)}
                   className={`rounded-md px-3 py-1 font-mono text-xs transition-colors ${
                     statusTab === t.key ? "bg-white/[0.08] text-mist" : "text-mist-dim hover:text-mist"
@@ -81,8 +83,18 @@ export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
             </>
           )}
         </div>
-        <div className="h-[32rem] xl:h-[calc(100dvh-11rem)]">
+        <div
+          id="status-tabpanel"
+          role="tabpanel"
+          aria-labelledby={`status-tab-${statusTab}`}
+          className="h-[32rem] xl:h-[calc(100dvh-11rem)]"
+        >
           {statusTab === "revoked" ? <RemovedSponsorsPanel /> : <ResultsGrid statusFilter={statusTab} />}
+        </div>
+        <div className="space-y-6 border-t border-hairline pt-5">
+          <h2 className="font-mono text-xs uppercase tracking-wide text-mist-dim">Register insights</h2>
+          {kpi && <KpiStrip kpi={kpi} />}
+          <ChartsPanel />
         </div>
       </div>
     </main>
