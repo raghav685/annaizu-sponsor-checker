@@ -26,8 +26,24 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: "COMPANIES_HOUSE_API_KEY is not configured." }, { status: 500, headers: NO_INDEX_HEADERS });
   }
 
-  const result = await processCompaniesHouseQueue(50);
-  return NextResponse.json(result, { headers: NO_INDEX_HEADERS });
+  const startedAt = new Date();
+  try {
+    const result = await processCompaniesHouseQueue(50);
+    const durationMs = Date.now() - startedAt.getTime();
+    console.log(
+      `[companies-house-sync] batch complete in ${durationMs}ms: processed=${result.processed} reclassified=${result.reclassified} ` +
+        `matchedBackfill=${result.matchedBackfill} divergentFlagged=${result.divergentFlagged} unmatched=${result.unmatched} ` +
+        `errored=${result.errored} stoppedForRateLimit=${result.stoppedForRateLimit} stoppedForErrors=${result.stoppedForErrors}`
+    );
+    return NextResponse.json({ ...result, startedAt, durationMs }, { headers: NO_INDEX_HEADERS });
+  } catch (err) {
+    // Should be unreachable now that processCompaniesHouseQueue catches per-sponsor errors, but
+    // this is the batch's own safety net (e.g. a DB connectivity failure) - never let an
+    // unhandled exception here return an opaque 500 with no diagnosis.
+    const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+    console.error(`[companies-house-sync] batch failed: ${message}`);
+    return NextResponse.json({ error: "Companies House batch processing failed.", message, startedAt }, { status: 500, headers: NO_INDEX_HEADERS });
+  }
 }
 
 export const GET = handle;

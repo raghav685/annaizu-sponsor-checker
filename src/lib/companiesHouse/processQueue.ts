@@ -11,9 +11,10 @@ import { db } from "@/db/client";
 import { sponsors, sponsorEvents, sponsorReviewQueue } from "@/db/schema";
 import { lookupsUsedInWindow, RATE_LIMIT_MAX_LOOKUPS } from "./cache";
 import { matchSponsorToCompaniesHouse, CONFIDENT_THRESHOLD } from "./match";
-import { classifyCompanyStatus } from "./client";
+import { classifyCompanyStatus, CompaniesHouseRateLimitError } from "./client";
 
 const RECHECK_AFTER_DAYS = 30;
+const MAX_CONSECUTIVE_ERRORS = 3; // a handful of bad names is normal; this many in a row suggests the API itself is down
 
 export interface ProcessQueueResult {
   processed: number;
@@ -21,7 +22,10 @@ export interface ProcessQueueResult {
   matchedBackfill: number;
   divergentFlagged: number;
   unmatched: number;
+  errored: number;
   stoppedForRateLimit: boolean;
+  stoppedForErrors: boolean;
+  errors: Array<{ sponsorId: string; message: string }>;
 }
 
 async function pickBatch(limit: number) {
@@ -60,10 +64,14 @@ export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<Pro
     matchedBackfill: 0,
     divergentFlagged: 0,
     unmatched: 0,
+    errored: 0,
     stoppedForRateLimit: false,
+    stoppedForErrors: false,
+    errors: [],
   };
 
   const batch = await pickBatch(maxToProcess);
+  let consecutiveErrors = 0;
 
   for (const sponsor of batch) {
     if ((await lookupsUsedInWindow()) >= RATE_LIMIT_MAX_LOOKUPS) {
@@ -71,8 +79,32 @@ export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<Pro
       break;
     }
 
-    const variants = sponsor.nameVariants.length > 0 ? sponsor.nameVariants : [sponsor.displayName];
-    const matchResult = await matchSponsorToCompaniesHouse(variants);
+    let matchResult;
+    try {
+      const variants = sponsor.nameVariants.length > 0 ? sponsor.nameVariants : [sponsor.displayName];
+      matchResult = await matchSponsorToCompaniesHouse(variants);
+    } catch (err) {
+      // A single sponsor's lookup failing (timeout, 5xx, unexpected 429) must not take down the
+      // rest of the batch - record it and move on, but stop early if failures are consecutive,
+      // since that means the API itself is down, not that this one name is unusual.
+      result.processed++;
+      result.errored++;
+      const message = err instanceof Error ? err.message : String(err);
+      result.errors.push({ sponsorId: sponsor.id, message });
+      console.error(`[companies-house-sync] lookup failed for sponsor ${sponsor.id} ("${sponsor.displayName}"): ${message}`);
+
+      if (err instanceof CompaniesHouseRateLimitError) {
+        result.stoppedForRateLimit = true;
+        break;
+      }
+      consecutiveErrors++;
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        result.stoppedForErrors = true;
+        break;
+      }
+      continue;
+    }
+    consecutiveErrors = 0;
     result.processed++;
 
     if (matchResult.divergent) {
