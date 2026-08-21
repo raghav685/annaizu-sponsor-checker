@@ -1,35 +1,38 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { GlassPanel } from "@/components/ui/GlassPanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { SponsorCard } from "@/components/console/SponsorCard";
+import { SponsorPageGrid } from "./SponsorPageGrid";
+import { PagedGridServer } from "./PagedGridServer";
 import type { Sponsor } from "@/lib/types";
 import type { Crumb } from "@/lib/seo";
-import Link from "next/link";
 import { formatNumber } from "@/lib/formatNumber";
 
-const PAGE_SIZE = 60;
-
+// This component itself never awaits `searchParamsPromise` - it just forwards the raw Promise
+// to PagedGridServer, which is the only thing wrapped in Suspense. Next.js tracks a *read* of
+// searchParams as the dynamic-opt-out trigger, not merely receiving the Promise as a prop, so
+// everything above the Suspense boundary (title, breadcrumbs, count, and the fallback grid
+// below) still statically prerenders via generateStaticParams + revalidate:300. Confirmed
+// against production this mattered: the previous version (which awaited `searchParams` in the
+// page component itself) served `Cache-Control: private, no-cache, no-store, must-revalidate`
+// and `x-vercel-cache: MISS` on every single request across all ~6,800 of these pages.
 export function BrowseListPage({
   kicker,
   title,
   sponsors,
-  page,
   crumbs,
   registerDate,
+  searchParamsPromise,
 }: {
   kicker: string;
   title: string;
   sponsors: Sponsor[];
-  page: number;
   crumbs: Crumb[];
   registerDate?: string;
+  searchParamsPromise: Promise<{ page?: string }>;
 }) {
   if (sponsors.length === 0) notFound();
 
   const sorted = [...sponsors].sort((a, b) => a.name.localeCompare(b.name));
-  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const currentPage = Math.min(Math.max(1, page), pageCount);
-  const pageItems = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <main className="relative min-h-[100dvh] bg-void px-6 py-12 lg:px-16">
@@ -46,36 +49,10 @@ export function BrowseListPage({
           that any particular application will be sponsored.
         </p>
 
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {pageItems.map((s) => (
-            <SponsorCard key={s.id} sponsor={s} compact={false} />
-          ))}
-        </div>
-
-        {pageCount > 1 && (
-          <GlassPanel elevation="base" className="mt-8 flex items-center justify-between p-4">
-            <PageLink page={currentPage - 1} disabled={currentPage <= 1} label="← Previous" />
-            <span className="font-mono text-xs text-mist-dim">
-              Page {currentPage} of {pageCount}
-            </span>
-            <PageLink page={currentPage + 1} disabled={currentPage >= pageCount} label="Next →" />
-          </GlassPanel>
-        )}
+        <Suspense fallback={<SponsorPageGrid sorted={sorted} page={1} />}>
+          <PagedGridServer sorted={sorted} searchParamsPromise={searchParamsPromise} />
+        </Suspense>
       </div>
     </main>
-  );
-}
-
-function PageLink({ page, disabled, label }: { page: number; disabled: boolean; label: string }) {
-  if (disabled) {
-    return <span className="rounded-lg px-3 py-1.5 font-mono text-xs text-mist-dim/40">{label}</span>;
-  }
-  return (
-    <Link
-      href={`?page=${page}`}
-      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
-    >
-      {label}
-    </Link>
   );
 }
