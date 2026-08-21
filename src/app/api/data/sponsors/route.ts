@@ -11,6 +11,17 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const sponsorsList = await loadActiveSponsorsForFrontend();
   return NextResponse.json(sponsorsList, {
-    headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    headers: {
+      // `force-dynamic` makes Next.js normalise/strip a plain `Cache-Control` header down to
+      // just its bare directive on the way out (verified against production: the s-maxage and
+      // stale-while-revalidate this used to carry never survived, so every request was an
+      // uncached MISS - confirmed via `x-vercel-cache: MISS` on consecutive requests seconds
+      // apart, and a 4.3MB compressed payload behind every single one). `CDN-Cache-Control`
+      // is a separate, CDN-only directive Next's normalisation doesn't touch, so it's what
+      // actually reaches Vercel's edge cache. `Cache-Control` is kept conservative so a
+      // downstream proxy or the browser itself never serves a stale copy past the edge.
+      "CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      "Cache-Control": "public, max-age=0, must-revalidate",
+    },
   });
 }
