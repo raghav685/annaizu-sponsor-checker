@@ -12,12 +12,17 @@ import * as schema from "./schema";
 // so a misconfigured environment fails loudly instead of producing numbers
 // that look real but aren't.
 //
-// Standard Postgres wire protocol (postgres-js), not a Neon-specific driver -
-// the database is Supabase (moved off Neon after its free-tier data transfer
-// quota was exhausted). `prepare: false` is required when the connection
-// string routes through pgbouncer in transaction-pooling mode (Supabase's
-// pooled connection does) - prepared statements aren't safe to reuse across
-// pooled connections that can be handed to a different backend per query.
+// Standard Postgres wire protocol (postgres-js), not tied to any specific
+// provider - the database has moved twice (Neon -> Supabase -> Aiven), both
+// times because a free-tier data-transfer/egress quota was exhausted, not
+// because of anything provider-specific. See the 2026-08-21 commits fixing
+// the actual causes (a sitemap route re-fetching the full active-sponsor
+// list 5x per build, and ~6,800 browse pages being eagerly statically
+// generated instead of the top few hundred) before assuming a third move
+// will be needed. `prepare: false` stays set regardless of provider - it's
+// required whenever the connection string routes through a pooler in
+// transaction-pooling mode (Supabase's pooled connection did; harmless to
+// keep even against a provider that doesn't pool, like Aiven's free tier).
 function createDb() {
   const explicitPglite = process.env.DB_DRIVER === "pglite";
 

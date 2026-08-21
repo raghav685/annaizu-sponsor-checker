@@ -306,13 +306,14 @@ No Docker/Postgres is available in this dev environment, so:
   migration script also print `describeDbTarget()` (driver + host, no
   credentials) as their first line of output, so the target is stated, not
   inferred.
-- **Production**: set `DATABASE_URL` (Supabase - moved off Neon after its
-  free-tier data transfer quota was exhausted; see `src/db/client.ts`). Uses
-  `drizzle-orm/postgres-js` over the standard Postgres wire protocol, with
-  `prepare: false` since the pooled Supabase connection string routes
-  through pgbouncer in transaction-pooling mode, where prepared statements
-  aren't safe to reuse across pooled connections that can be handed to a
-  different backend per query.
+- **Production**: set `DATABASE_URL` (Aiven, as of 2026-08-21 - this is the
+  *second* migration, Neon then Supabase then Aiven, both times because a
+  free-tier data-transfer/egress quota was exhausted mid-build; see
+  `src/db/client.ts` and the 2026-08-21 commits that fixed the actual
+  build-time egress waste this exposed). Uses `drizzle-orm/postgres-js` over
+  the standard Postgres wire protocol, with `prepare: false` kept regardless
+  of provider - required when a connection routes through a pooler in
+  transaction-pooling mode (Supabase's did), harmless otherwise.
 - Both PGlite and `postgres` are excluded from webpack bundling via
   `serverExternalPackages` in `next.config.ts` - PGlite loads its WASM
   binary via `import.meta.url`-relative paths that break under webpack's
@@ -322,9 +323,9 @@ No Docker/Postgres is available in this dev environment, so:
   same interface (`src/lib/snapshotStorage.ts`).
 - A future fuzzy-matching phase using Postgres `pg_trgm` will need to import
   it explicitly for PGlite (`@electric-sql/pglite/contrib/pg_trgm`) even
-  though `CREATE EXTENSION pg_trgm` works unchanged on Supabase - not needed
-  yet since Phase 1's `similarity()` is a dependency-free JS Levenshtein
-  function.
+  though `CREATE EXTENSION pg_trgm` works unchanged on a real Postgres
+  server - not needed yet since Phase 1's `similarity()` is a
+  dependency-free JS Levenshtein function.
 - Any concurrency guard that isn't a plain DB constraint (e.g. an advisory
   lock) cannot be meaningfully tested against PGlite, which is effectively
   single-connection. Phase 1's guard is a partial unique index instead
@@ -334,7 +335,7 @@ No Docker/Postgres is available in this dev environment, so:
 
 ```
 npm run db:generate   # regenerate SQL migrations from src/db/schema.ts
-npm run db:migrate    # apply migrations (PGlite locally, Supabase in prod via DATABASE_URL)
+npm run db:migrate    # apply migrations (PGlite locally, Aiven in prod via DATABASE_URL)
 npm run sync          # run one sync (idempotent, safe to re-run)
 npm test              # CSV parser, diff engine, and match-key normalisation tests
 ```
