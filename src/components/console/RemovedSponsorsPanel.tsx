@@ -49,7 +49,7 @@ export function RemovedSponsorsPanel() {
           {state.sponsors.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8 text-center">
               <p className="max-w-sm font-mono text-xs text-mist-dim">
-                No sponsors are currently revoked. This means observed leaving the register - it isn&apos;t a confirmed claim about why
+                No sponsors have been removed from the register. This means observed leaving the register - it isn&apos;t a confirmed claim about why
                 (could be a genuine licence loss, a voluntary surrender, or a rename/relocation that looks identical in the data).
               </p>
             </div>

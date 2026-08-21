@@ -13,10 +13,15 @@ import { KpiStrip } from "./KpiStrip";
 import type { KpiSummary } from "@/lib/dataQueries";
 import { formatNumber } from "@/lib/formatNumber";
 
+// Labels, not the internal "suspended"/"revoked" keys: neither is a status the GOV.UK register
+// actually supplies. "suspended" here means "active now, but has a `removed` event somewhere in
+// its history" - not a confirmed formal suspension. "revoked" means "not currently on the
+// register" - 99.8% of that bucket has zero Companies House evidence of why. Labelling either
+// as a specific legal action states more than the source supports (see DECISIONS.md).
 const STATUS_TABS = [
   { key: "active", label: "Active" },
-  { key: "suspended", label: "Suspended" },
-  { key: "revoked", label: "Revoked" },
+  { key: "suspended", label: "Reactivated" },
+  { key: "revoked", label: "Removed" },
 ] as const;
 
 export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
