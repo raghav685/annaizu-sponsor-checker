@@ -4,9 +4,20 @@ import { sponsors, sponsorRoutes } from "@/db/schema";
 import { loadActiveSponsorsForFrontend } from "./dataQueries";
 import type { Sponsor, Region, Sector, Rating, SponsorType } from "./types";
 
-/** Full active-sponsor list, for the sitemap only - everything else here does a targeted query. */
+/**
+ * Full active-sponsor list, for the sitemap only - everything else here does a targeted query.
+ * Memoized for the lifetime of the process: `sitemap.ts` calls this once in generateSitemaps()
+ * to count chunks, then once again per chunk (4 more calls for ~127k sponsors) - unmemoized,
+ * that's 5 full ~40MB fetches of the same data on every single build. `next.config.ts` pins
+ * static generation to a single worker (`experimental.cpus: 1`, originally for a PGlite
+ * concurrency issue), so all of those calls land in the same process and this cache actually
+ * dedupes them - confirmed as a real contributor to Supabase's data-transfer quota being
+ * exhausted mid-build (production `PostgresError 53000`, 2026-08-21).
+ */
+let cachedSponsors: Promise<Sponsor[]> | null = null;
 export function loadSponsorsServer(): Promise<Sponsor[]> {
-  return loadActiveSponsorsForFrontend();
+  if (!cachedSponsors) cachedSponsors = loadActiveSponsorsForFrontend();
+  return cachedSponsors;
 }
 
 function deriveRating(ratings: Array<"A" | "B">): Rating {

@@ -11,9 +11,19 @@ interface Props {
   searchParams: Promise<{ page?: string }>;
 }
 
+// Only the largest cities are pre-rendered at build time; `cities` is already sorted by count
+// descending. Pre-building all ~6,800 of them meant a real loadSponsorsByCity() query - and
+// real data transfer - for every single one, on every single build, contributing directly to
+// exhausting Supabase's data-transfer quota mid-build (production `PostgresError 53000`,
+// 2026-08-21). `dynamicParams` defaults to true, so a town outside this list still renders
+// correctly on its first real request - just on-demand instead of eagerly, then cached for
+// `revalidate` seconds like any other page. This is the standard ISR fallback pattern, not a
+// feature change: every city page still exists and is still crawlable/indexable.
+const BUILD_TIME_CITY_LIMIT = 300;
+
 export async function generateStaticParams() {
   const { cities } = await loadBrowseIndex();
-  return cities.map((c) => ({ city: c.name }));
+  return cities.slice(0, BUILD_TIME_CITY_LIMIT).map((c) => ({ city: c.name }));
 }
 
 // Deliberately does not read `searchParams` - see BrowseListPage.tsx for why. Every paginated
