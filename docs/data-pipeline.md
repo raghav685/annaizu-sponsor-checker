@@ -66,11 +66,13 @@ PGlite, three consecutive runs): a full changed-publish run through the real
 `/api/sync/trigger` route - fetch 11MB, resolve via Content API, parse ~127k
 sponsors, stage ~141k rows, load current live state, diff, transactional
 commit - takes **~12.1-12.6s**, comfortably inside the route's 60s
-`maxDuration`. This does NOT yet include real Neon network latency per query;
-re-verify once `DATABASE_URL` points at production. The one-time baseline
-load (~127k inserts, nothing to diff against) took **~97s** via the CLI in
-the same environment - that one runs via `npm run sync` against
-`DATABASE_URL` directly, not through the serverless route.
+`maxDuration`. Re-verified against real production (Supabase, not local
+PGlite) via `/api/health`: a real daily delta through `/api/sync/trigger`
+completed in 36s (2026-08-21, run id 89, 142,806 rows), comfortably inside
+the 60s ceiling even with real network latency per query. The one-time
+baseline load (~127k inserts, nothing to diff against) took **~97s** via
+the CLI in the local/PGlite environment - that one runs via `npm run sync`
+against `DATABASE_URL` directly, not through the serverless route.
 
 **Known rough edge:** if the snapshot upload/insert fails AFTER the sponsor
 diff has already committed successfully, the whole run is still marked
@@ -304,20 +306,25 @@ No Docker/Postgres is available in this dev environment, so:
   migration script also print `describeDbTarget()` (driver + host, no
   credentials) as their first line of output, so the target is stated, not
   inferred.
-- **Production**: set `DATABASE_URL` (Neon). Uses `drizzle-orm/neon-serverless`
-  (`Pool` over WebSocket) specifically - **not** `neon-http`, which is
-  stateless HTTP-per-query and does not support transactions at all, which
-  the staging→swap commit hard-requires.
-- Both are excluded from webpack bundling via `serverExternalPackages` in
-  `next.config.ts` - PGlite loads its WASM binary via `import.meta.url`-relative
-  paths that break under webpack's bundling.
+- **Production**: set `DATABASE_URL` (Supabase - moved off Neon after its
+  free-tier data transfer quota was exhausted; see `src/db/client.ts`). Uses
+  `drizzle-orm/postgres-js` over the standard Postgres wire protocol, with
+  `prepare: false` since the pooled Supabase connection string routes
+  through pgbouncer in transaction-pooling mode, where prepared statements
+  aren't safe to reuse across pooled connections that can be handed to a
+  different backend per query.
+- Both PGlite and `postgres` are excluded from webpack bundling via
+  `serverExternalPackages` in `next.config.ts` - PGlite loads its WASM
+  binary via `import.meta.url`-relative paths that break under webpack's
+  bundling.
 - Snapshot storage: Vercel Blob in production (`BLOB_READ_WRITE_TOKEN`);
   falls back to a local gitignored `.snapshots/` directory in dev with the
   same interface (`src/lib/snapshotStorage.ts`).
 - A future fuzzy-matching phase using Postgres `pg_trgm` will need to import
   it explicitly for PGlite (`@electric-sql/pglite/contrib/pg_trgm`) even
-  though `CREATE EXTENSION pg_trgm` works unchanged on Neon - not needed yet
-  since Phase 1's `similarity()` is a dependency-free JS Levenshtein function.
+  though `CREATE EXTENSION pg_trgm` works unchanged on Supabase - not needed
+  yet since Phase 1's `similarity()` is a dependency-free JS Levenshtein
+  function.
 - Any concurrency guard that isn't a plain DB constraint (e.g. an advisory
   lock) cannot be meaningfully tested against PGlite, which is effectively
   single-connection. Phase 1's guard is a partial unique index instead
@@ -327,7 +334,7 @@ No Docker/Postgres is available in this dev environment, so:
 
 ```
 npm run db:generate   # regenerate SQL migrations from src/db/schema.ts
-npm run db:migrate    # apply migrations (PGlite locally, Neon in prod via DATABASE_URL)
+npm run db:migrate    # apply migrations (PGlite locally, Supabase in prod via DATABASE_URL)
 npm run sync          # run one sync (idempotent, safe to re-run)
 npm test              # CSV parser, diff engine, and match-key normalisation tests
 ```

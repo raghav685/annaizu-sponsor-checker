@@ -114,10 +114,10 @@ export async function loadActiveSponsorsForFrontend(): Promise<Sponsor[]> {
 
 /**
  * Sponsors no longer on the register (status != active), presented as a single "revoked"
- * bucket regardless of the underlying withdrawn/closed/unknown split - always empty today,
- * since the baseline sync has nothing to remove anything against yet. Kept separate from
- * the active loader/store rather than blended in, so the site's core stats and filters
- * stay exactly "active sponsors only".
+ * bucket regardless of the underlying withdrawn/closed/unknown split - see DECISIONS.md's
+ * "Outstanding commitment" entry for why this must never be worded as confirmed licence loss.
+ * Kept separate from the active loader/store rather than blended in, so the site's core stats
+ * and filters stay exactly "active sponsors only".
  */
 export async function loadRemovedSponsorsForFrontend(): Promise<Sponsor[]> {
   const removed = await db.select().from(sponsors).where(ne(sponsors.status, "active"));
