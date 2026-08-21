@@ -107,7 +107,7 @@ export function Sidebar() {
                   label={region}
                   checked={filters.regions.includes(region)}
                   onChange={() => toggleListValue("regions", region)}
-                  count={stats?.byRegion[region] ?? 0}
+                  count={stats ? stats.byRegion[region] ?? 0 : undefined}
                 />
               ))}
             </div>
@@ -187,7 +187,7 @@ export function Sidebar() {
                   label={sector}
                   checked={filters.sectors.includes(sector)}
                   onChange={() => toggleListValue("sectors", sector)}
-                  count={stats?.bySector[sector] ?? 0}
+                  count={stats ? stats.bySector[sector] ?? 0 : undefined}
                 />
               ))}
             </div>
