@@ -185,12 +185,22 @@ export async function runSync(): Promise<SyncOutcome> {
 
     const registerDate = new Date(source.registerPublicUpdatedAt);
 
+    // Pipeline depth for per-row updates below - postgres.js automatically pipelines queries
+    // fired without awaiting each one individually on the same connection, so firing this many
+    // at once collapses N round-trips down to roughly one RTT plus execution time instead of
+    // N x RTT. Confirmed live and necessary, not just theoretical: production run id 91
+    // (2026-08-25) completed the fully-batched staging insert (all 141,719 rows) but still hit
+    // the 60s timeout with 0 sponsor_events written - it died in this exact per-row phase,
+    // catching up ~5 days of accumulated backlog against Aiven's real (Amsterdam, transatlantic
+    // from this route's iad1 execution region) latency. Bounded rather than firing all rows in
+    // one Promise.all so pipeline depth doesn't grow unbounded on a very large backlog.
+    const UPDATE_PIPELINE_DEPTH = 1000;
+
     await db.transaction(async (tx) => {
       // Inserts are batched (one network round-trip per BATCH_SIZE rows, not per row) - a plain
       // per-row loop is fine for a handful of daily deltas but was measured to take 30+ minutes
       // over a real network connection for the ~127k-row baseline load, versus ~97s locally
-      // against PGlite (no network RTT). Updates stay per-row: on any real day there are at most
-      // a few hundred, so batching them isn't worth the added complexity.
+      // against PGlite (no network RTT).
       const insertUpserts = diff.sponsorUpserts.filter((u) => u.action === "insert");
       const updateUpserts = diff.sponsorUpserts.filter((u) => u.action !== "insert");
 
@@ -219,17 +229,21 @@ export async function runSync(): Promise<SyncOutcome> {
         }
       }
 
-      for (const u of updateUpserts) {
-        const id = idByIdentityKey.get(u.identityKey);
-        if (!id) throw new Error(`No existing sponsor id for identity "${u.identityKey}" during ${u.action}`);
-        await tx
-          .update(sponsors)
-          .set(
-            u.action === "remove"
-              ? { displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants, status: "unknown", updatedAt: new Date() }
-              : { displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants, status: "active", lastSeenAt: registerDate, updatedAt: new Date() }
-          )
-          .where(eq(sponsors.id, id));
+      for (const batch of chunk(updateUpserts, UPDATE_PIPELINE_DEPTH)) {
+        await Promise.all(
+          batch.map((u) => {
+            const id = idByIdentityKey.get(u.identityKey);
+            if (!id) throw new Error(`No existing sponsor id for identity "${u.identityKey}" during ${u.action}`);
+            return tx
+              .update(sponsors)
+              .set(
+                u.action === "remove"
+                  ? { displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants, status: "unknown", updatedAt: new Date() }
+                  : { displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants, status: "active", lastSeenAt: registerDate, updatedAt: new Date() }
+              )
+              .where(eq(sponsors.id, id));
+          })
+        );
       }
 
       const insertRoutes = diff.routeChanges.filter((rc) => rc.action === "add");
@@ -252,20 +266,22 @@ export async function runSync(): Promise<SyncOutcome> {
           });
       }
 
-      for (const rc of otherRoutes) {
-        const sponsorId = idByIdentityKey.get(rc.identityKey);
-        if (!sponsorId) throw new Error(`No sponsor id for identity "${rc.identityKey}" during route ${rc.action}`);
-        if (rc.action === "deactivate") {
-          await tx
-            .update(sponsorRoutes)
-            .set({ isCurrent: false, lastSeenAt: registerDate })
-            .where(and(eq(sponsorRoutes.sponsorId, sponsorId), eq(sponsorRoutes.route, rc.route), eq(sponsorRoutes.isCurrent, true)));
-        } else {
-          await tx
-            .update(sponsorRoutes)
-            .set({ rating: rc.rating, lastSeenAt: registerDate })
-            .where(and(eq(sponsorRoutes.sponsorId, sponsorId), eq(sponsorRoutes.route, rc.route), eq(sponsorRoutes.isCurrent, true)));
-        }
+      for (const batch of chunk(otherRoutes, UPDATE_PIPELINE_DEPTH)) {
+        await Promise.all(
+          batch.map((rc) => {
+            const sponsorId = idByIdentityKey.get(rc.identityKey);
+            if (!sponsorId) throw new Error(`No sponsor id for identity "${rc.identityKey}" during route ${rc.action}`);
+            return rc.action === "deactivate"
+              ? tx
+                  .update(sponsorRoutes)
+                  .set({ isCurrent: false, lastSeenAt: registerDate })
+                  .where(and(eq(sponsorRoutes.sponsorId, sponsorId), eq(sponsorRoutes.route, rc.route), eq(sponsorRoutes.isCurrent, true)))
+              : tx
+                  .update(sponsorRoutes)
+                  .set({ rating: rc.rating, lastSeenAt: registerDate })
+                  .where(and(eq(sponsorRoutes.sponsorId, sponsorId), eq(sponsorRoutes.route, rc.route), eq(sponsorRoutes.isCurrent, true)));
+          })
+        );
       }
 
       const eventRows = diff.events.map((e) => {
