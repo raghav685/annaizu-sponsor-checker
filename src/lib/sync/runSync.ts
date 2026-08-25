@@ -19,15 +19,34 @@ const HALT_THRESHOLD = 0.02; // >2% of active sponsors removed in one publish ha
 // route runs in iad1 (US East), and at BATCH_SIZE=500 the staging insert alone needed ~282
 // round-trips. It got killed by the 60s maxDuration at 108,500/~141k staged rows (0
 // sponsor_events written - the live sponsors table was never touched, so no data corruption,
-// just a killed run). Raised 6x to cut round-trips proportionally; still comfortably under
-// Postgres's ~65,535-parameter-per-query limit for every table this batches (the widest is
-// sponsors at 11 columns: 3000 x 11 = 33,000).
-const BATCH_SIZE = 3000;
+// just a killed run). Raised again (500 -> 3000 -> 5000) to cut round-trips further; still
+// comfortably under Postgres's ~65,535-parameter-per-query limit for every table this batches
+// (the widest is sponsors at 11 columns: 5000 x 11 = 55,000).
+const BATCH_SIZE = 5000;
+// Sequential batches still weren't enough on their own (run id 93, 2026-08-25: BATCH_SIZE=3000
+// completed staging but consumed 52 of the 60s budget). The staging insert is the one place in
+// this file that runs on plain `db` outside a transaction, so unlike the update loops below
+// (pinned to a single transactional connection `tx`) it can actually use postgres-js's
+// connection pool for real multi-connection parallelism, not just single-connection pipelining.
+// 8 stays under the driver's default pool size of 10 (src/db/client.ts sets no `max`), leaving
+// headroom for the current-sponsors/current-routes loads that immediately follow.
+const STAGING_INSERT_CONCURRENCY = 8;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
+}
+
+async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<unknown>): Promise<void> {
+  let next = 0;
+  async function runNext(): Promise<void> {
+    const i = next++;
+    if (i >= items.length) return;
+    await worker(items[i]);
+    return runNext();
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, runNext));
 }
 
 export type SyncOutcome =
@@ -118,9 +137,7 @@ export async function runSync(): Promise<SyncOutcome> {
         sponsorType: r.sponsorType,
       }))
     );
-    for (const batch of chunk(stagingRows, BATCH_SIZE)) {
-      await db.insert(stagedRows).values(batch);
-    }
+    await runWithConcurrency(chunk(stagingRows, BATCH_SIZE), STAGING_INSERT_CONCURRENCY, (batch) => db.insert(stagedRows).values(batch));
     console.log(`[sync] staged ${stagingRows.length} rows at ${elapsed()}`);
 
     const stagedGroups: StagedSponsorGroup[] = parsed.sponsors.map((s) => ({
