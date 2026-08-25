@@ -14,7 +14,15 @@ import { slugify } from "../../../scripts/lib/text";
 import { putSnapshot } from "../snapshotStorage";
 
 const HALT_THRESHOLD = 0.02; // >2% of active sponsors removed in one publish halts for review
-const BATCH_SIZE = 500;
+// Round-trip count matters more than row count once the DB isn't in the same region as the
+// function: confirmed live on production (2026-08-25, run id 90) - Aiven is in Amsterdam, this
+// route runs in iad1 (US East), and at BATCH_SIZE=500 the staging insert alone needed ~282
+// round-trips. It got killed by the 60s maxDuration at 108,500/~141k staged rows (0
+// sponsor_events written - the live sponsors table was never touched, so no data corruption,
+// just a killed run). Raised 6x to cut round-trips proportionally; still comfortably under
+// Postgres's ~65,535-parameter-per-query limit for every table this batches (the widest is
+// sponsors at 11 columns: 3000 x 11 = 33,000).
+const BATCH_SIZE = 3000;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
