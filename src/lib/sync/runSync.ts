@@ -34,6 +34,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+// drizzle-orm's `sql` template spreads a raw JS array value into multiple comma-separated bind
+// placeholders (`($1, $2)::text[]` instead of one array-typed `$1::text[]`) - it's built for
+// `IN (${array})`, not for passing an actual array parameter. Confirmed live (2026-08-25, run id
+// 96): with a single-element array this degrades to one scalar param cast straight to `text[]`,
+// which Postgres rejects. Passing a properly-escaped Postgres array-literal *string* instead
+// sidesteps drizzle's array-specific handling entirely - it's just an ordinary text parameter
+// that happens to parse as an array once cast.
+function toPgTextArrayLiteral(values: string[]): string {
+  const escaped = values.map((v) => `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`);
+  return `{${escaped.join(",")}}`;
+}
+
 // COPY, not batched parameterized INSERTs, for staging: raising BATCH_SIZE (500 -> 3000 -> 5000)
 // and then parallelizing across the connection pool (run id 94, 2026-08-25) both failed to fix
 // this, the second attempt making it *worse* (didn't even finish staging in 55s, versus 52s
@@ -297,7 +309,7 @@ export async function runSync(): Promise<SyncOutcome> {
           const rows = sql.join(
             batch.map(
               (r) =>
-                sql`(${r.id}::uuid, ${r.displayName}::text, ${r.town}::text, ${r.county}::text, ${r.region}::text, ${r.sector}::text, ${r.nameVariants}::text[])`
+                sql`(${r.id}::uuid, ${r.displayName}::text, ${r.town}::text, ${r.county}::text, ${r.region}::text, ${r.sector}::text, ${toPgTextArrayLiteral(r.nameVariants)}::text[])`
             ),
             sql`, `
           );
