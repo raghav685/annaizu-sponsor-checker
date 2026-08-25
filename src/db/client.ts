@@ -34,7 +34,19 @@ function createDb() {
           "Postgres connection, or set DB_DRIVER=pglite to explicitly opt into local dev."
       );
     }
-    const client = postgres(process.env.DATABASE_URL, { prepare: false });
+    // max/idle_timeout matter a lot more here than on a normal deployment: postgres.js defaults
+    // to max:10 idle_timeout:null (connections held open forever), and this module-scoped client
+    // is cached per warm serverless instance (see getInstance() below) - Vercel Fluid Compute can
+    // keep many instances warm at once, each with its own pool. Confirmed live twice
+    // (2026-08-25): Aiven's free tier only has ~20 non-reserved connection slots, and normal
+    // traffic across a handful of warm instances was enough to exhaust them within hours, taking
+    // every DB-backed route down with "remaining connection slots are reserved for roles with
+    // the SUPERUSER attribute" until the leaked idle connections were manually killed. max:2 caps
+    // each instance's worst case far below the old default while still letting the couple of
+    // genuinely-concurrent Promise.all query pairs in dataQueries.ts run in parallel; idle_timeout
+    // makes postgres.js proactively release a connection back to Aiven after 20s unused instead
+    // of holding it forever.
+    const client = postgres(process.env.DATABASE_URL, { prepare: false, max: 2, idle_timeout: 20, max_lifetime: 60 * 30 });
     return { db: drizzlePostgres(client, { schema }), driver: "postgres" as const, client };
   }
 
