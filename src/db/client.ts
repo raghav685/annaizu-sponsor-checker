@@ -37,16 +37,23 @@ function createDb() {
     // max/idle_timeout matter a lot more here than on a normal deployment: postgres.js defaults
     // to max:10 idle_timeout:null (connections held open forever), and this module-scoped client
     // is cached per warm serverless instance (see getInstance() below) - Vercel Fluid Compute can
-    // keep many instances warm at once, each with its own pool. Confirmed live twice
-    // (2026-08-25): Aiven's free tier only has ~20 non-reserved connection slots, and normal
-    // traffic across a handful of warm instances was enough to exhaust them within hours, taking
-    // every DB-backed route down with "remaining connection slots are reserved for roles with
-    // the SUPERUSER attribute" until the leaked idle connections were manually killed. max:2 caps
-    // each instance's worst case far below the old default while still letting the couple of
-    // genuinely-concurrent Promise.all query pairs in dataQueries.ts run in parallel; idle_timeout
-    // makes postgres.js proactively release a connection back to Aiven after 20s unused instead
-    // of holding it forever.
-    const client = postgres(process.env.DATABASE_URL, { prepare: false, max: 2, idle_timeout: 20, max_lifetime: 60 * 30 });
+    // keep many instances warm at once, each with its own pool. Confirmed live 3x (2026-08-25):
+    // Aiven's free tier only has ~20 non-reserved connection slots, and normal traffic across a
+    // handful of warm instances was enough to exhaust them repeatedly, taking every DB-backed
+    // route (and every subsequent build, which queries the same DB for static generation) down
+    // with "remaining connection slots are reserved for roles with the SUPERUSER attribute".
+    // idle_timeout alone did NOT fix this (confirmed - 12 idle connections up to several minutes
+    // old were still open when checked): serverless instances freeze between invocations, and a
+    // frozen instance's JS event loop can't run the setTimeout that would close an idle
+    // connection, so idle_timeout only fires if the instance happens to be unfrozen for another
+    // invocation after the timeout elapses - not guaranteed, and not a real fix on its own.
+    // max:1 is the actual load-bearing setting here: it caps the worst case (N warm instances x 1
+    // connection each) far below max:10, and is the most this app needs since nothing in it
+    // requires two genuinely-simultaneous queries on the same request badly enough to justify the
+    // extra connection budget. A real fix beyond this would mean an Aiven connection-pooling
+    // (PgBouncer-style) endpoint if one exists on this plan, or closing the connection explicitly
+    // after every request via Next.js's after() - out of scope for this pass.
+    const client = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, idle_timeout: 20, max_lifetime: 60 * 30 });
     return { db: drizzlePostgres(client, { schema }), driver: "postgres" as const, client };
   }
 
