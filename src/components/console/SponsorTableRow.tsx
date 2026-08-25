@@ -51,8 +51,8 @@ export function SponsorTableHeader() {
 // GOV.UK actually supplies.
 const STATUS_LABEL: Record<Sponsor["status"], string> = {
   active: "Active",
-  suspended: "Suspended",
-  revoked: "Revoked",
+  suspended: "Revoked",
+  revoked: "Suspended",
 };
 
 const STATUS_COLOR: Record<Sponsor["status"], string> = {

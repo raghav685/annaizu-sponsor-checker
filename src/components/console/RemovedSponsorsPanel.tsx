@@ -38,7 +38,7 @@ export function RemovedSponsorsPanel() {
     return <p className="p-6 text-center font-mono text-xs text-mist-dim">Loading…</p>;
   }
   if (state.error) {
-    return <p className="p-6 text-center font-mono text-xs text-ember">Couldn&apos;t load revoked sponsors - try again.</p>;
+    return <p className="p-6 text-center font-mono text-xs text-ember">Couldn&apos;t load suspended sponsors - try again.</p>;
   }
 
   return (
@@ -49,7 +49,7 @@ export function RemovedSponsorsPanel() {
           {state.sponsors.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8 text-center">
               <p className="max-w-sm font-mono text-xs text-mist-dim">
-                No sponsors are currently revoked. This means observed leaving the register - it isn&apos;t a confirmed claim about why
+                No sponsors are currently suspended. This means observed leaving the register - it isn&apos;t a confirmed claim about why
                 (could be a genuine licence loss, a voluntary surrender, or a rename/relocation that looks identical in the data).
               </p>
             </div>

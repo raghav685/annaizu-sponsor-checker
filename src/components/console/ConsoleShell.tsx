@@ -19,8 +19,8 @@ import { formatNumber } from "@/lib/formatNumber";
 // zero Companies House evidence of why). See DECISIONS.md.
 const STATUS_TABS = [
   { key: "active", label: "Active" },
-  { key: "suspended", label: "Suspended" },
-  { key: "revoked", label: "Revoked" },
+  { key: "suspended", label: "Revoked" },
+  { key: "revoked", label: "Suspended" },
 ] as const;
 
 export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
