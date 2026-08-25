@@ -47,13 +47,12 @@ export function SponsorTableHeader() {
 // and LinkedIn icons both seem to open the same destination). The row itself is a plain div
 // that navigates on click; only the organisation name and the link icons are real anchors,
 // as siblings rather than nested inside one another.
-// See ConsoleShell.tsx's STATUS_TABS comment - "suspended"/"revoked" are internal keys, not
-// statuses the register actually supplies, so the labels shown here deliberately avoid stating
-// a specific legal action the data doesn't support.
+// See ConsoleShell.tsx's STATUS_TABS comment - neither "suspended" nor "revoked" is a status
+// GOV.UK actually supplies.
 const STATUS_LABEL: Record<Sponsor["status"], string> = {
   active: "Active",
-  suspended: "Reactivated",
-  revoked: "Removed",
+  suspended: "Suspended",
+  revoked: "Revoked",
 };
 
 const STATUS_COLOR: Record<Sponsor["status"], string> = {
