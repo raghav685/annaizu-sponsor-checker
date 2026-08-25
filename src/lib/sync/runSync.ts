@@ -92,8 +92,17 @@ export async function runSync(): Promise<SyncOutcome> {
     return { status: "failed", runId: null, error: `Could not start a new sync run (likely one is already running): ${err}` };
   }
 
+  // Temporary diagnostic checkpoints - live production runs against Aiven have hit the 60s
+  // function timeout twice already (2026-08-25, run ids 90 and 91) with 0 sponsor_events
+  // written each time, meaning the failure is somewhere between staging and the final commit.
+  // These pin down exactly which phase, rather than guessing at the next fix. Remove once the
+  // sync reliably completes under real load.
+  const t0 = Date.now();
+  const elapsed = () => `${Date.now() - t0}ms`;
+
   try {
     const parsed = parseRegisterCsv(csvBuffer.toString("utf-8"));
+    console.log(`[sync] parsed CSV at ${elapsed()}`);
 
     const stagingRows = parsed.sponsors.flatMap((s) =>
       s.routes.map((r) => ({
@@ -112,6 +121,7 @@ export async function runSync(): Promise<SyncOutcome> {
     for (const batch of chunk(stagingRows, BATCH_SIZE)) {
       await db.insert(stagedRows).values(batch);
     }
+    console.log(`[sync] staged ${stagingRows.length} rows at ${elapsed()}`);
 
     const stagedGroups: StagedSponsorGroup[] = parsed.sponsors.map((s) => ({
       matchKey: s.matchKey,
@@ -125,7 +135,9 @@ export async function runSync(): Promise<SyncOutcome> {
     }));
 
     const currentSponsors = await db.select().from(sponsors);
+    console.log(`[sync] loaded ${currentSponsors.length} current sponsors at ${elapsed()}`);
     const currentRoutes = await db.select().from(sponsorRoutes).where(eq(sponsorRoutes.isCurrent, true));
+    console.log(`[sync] loaded ${currentRoutes.length} current routes at ${elapsed()}`);
     const routesBySponsorId = new Map<string, { route: string; rating: "A" | "B" | null; sponsorType: "Worker" | "Temporary Worker" }[]>();
     for (const r of currentRoutes) {
       const list = routesBySponsorId.get(r.sponsorId) ?? [];
@@ -161,6 +173,9 @@ export async function runSync(): Promise<SyncOutcome> {
     }
 
     const diff = computeDiff(currentState, stagedGroups);
+    console.log(
+      `[sync] computed diff at ${elapsed()}: ${diff.sponsorUpserts.length} sponsor upserts, ${diff.routeChanges.length} route changes, ${diff.events.length} events`
+    );
 
     if (diff.sponsorsActiveBefore > 0 && diff.removalRatio > HALT_THRESHOLD) {
       await db
@@ -196,6 +211,7 @@ export async function runSync(): Promise<SyncOutcome> {
     // one Promise.all so pipeline depth doesn't grow unbounded on a very large backlog.
     const UPDATE_PIPELINE_DEPTH = 1000;
 
+    console.log(`[sync] entering transaction at ${elapsed()}`);
     await db.transaction(async (tx) => {
       // Inserts are batched (one network round-trip per BATCH_SIZE rows, not per row) - a plain
       // per-row loop is fine for a handful of daily deltas but was measured to take 30+ minutes
@@ -229,6 +245,8 @@ export async function runSync(): Promise<SyncOutcome> {
         }
       }
 
+      console.log(`[sync] inserted ${insertUpserts.length} new sponsors at ${elapsed()}`);
+
       for (const batch of chunk(updateUpserts, UPDATE_PIPELINE_DEPTH)) {
         await Promise.all(
           batch.map((u) => {
@@ -245,6 +263,7 @@ export async function runSync(): Promise<SyncOutcome> {
           })
         );
       }
+      console.log(`[sync] updated ${updateUpserts.length} existing sponsors at ${elapsed()}`);
 
       const insertRoutes = diff.routeChanges.filter((rc) => rc.action === "add");
       const otherRoutes = diff.routeChanges.filter((rc) => rc.action !== "add");
@@ -265,6 +284,7 @@ export async function runSync(): Promise<SyncOutcome> {
             set: { rating: sql`excluded.rating`, sponsorType: sql`excluded.sponsor_type`, isCurrent: true, lastSeenAt: registerDate },
           });
       }
+      console.log(`[sync] inserted/upserted ${insertRoutes.length} routes at ${elapsed()}`);
 
       for (const batch of chunk(otherRoutes, UPDATE_PIPELINE_DEPTH)) {
         await Promise.all(
@@ -284,6 +304,8 @@ export async function runSync(): Promise<SyncOutcome> {
         );
       }
 
+      console.log(`[sync] updated/deactivated ${otherRoutes.length} routes at ${elapsed()}`);
+
       const eventRows = diff.events.map((e) => {
         const sponsorId = idByIdentityKey.get(e.identityKey);
         if (!sponsorId) throw new Error(`No sponsor id for identity "${e.identityKey}" while writing event`);
@@ -301,6 +323,7 @@ export async function runSync(): Promise<SyncOutcome> {
       for (const batch of chunk(eventRows, BATCH_SIZE)) {
         if (batch.length) await tx.insert(sponsorEvents).values(batch);
       }
+      console.log(`[sync] wrote ${eventRows.length} events at ${elapsed()}`);
 
       await tx
         .update(syncRuns)
@@ -315,9 +338,11 @@ export async function runSync(): Promise<SyncOutcome> {
         })
         .where(eq(syncRuns.id, run.id));
     });
+    console.log(`[sync] transaction committed at ${elapsed()}`);
 
     const gzipped = await gzip(csvBuffer);
     const stored = await putSnapshot(`snapshots/${source.registerPublicUpdatedAt.slice(0, 10)}-${fileSha256.slice(0, 12)}.csv.gz`, gzipped);
+    console.log(`[sync] snapshot stored at ${elapsed()}`);
     await db.insert(snapshots).values({
       syncRunId: run.id,
       fileSha256,
