@@ -327,9 +327,13 @@ export async function runSync(): Promise<SyncOutcome> {
         updateUpserts.filter((u) => u.action === "remove").map(toFieldUpdate),
         sql`status = 'unknown'`
       );
+      // registerDate must be a string here, not a raw JS Date - confirmed live (2026-08-25, run
+      // id 98): drizzle's `sql` template (unlike its typed .set()/.values() builders) hands the
+      // value straight to postgres.js without Date serialization, which throws
+      // ERR_INVALID_ARG_TYPE ("must be of type string ... Received an instance of Date").
       await bulkUpdateSponsorFields(
         updateUpserts.filter((u) => u.action !== "remove").map(toFieldUpdate),
-        sql`status = 'active', last_seen_at = ${registerDate}`
+        sql`status = 'active', last_seen_at = ${registerDate.toISOString()}::timestamptz`
       );
       console.log(`[sync] updated ${updateUpserts.length} existing sponsors at ${elapsed()}`);
 
@@ -371,7 +375,7 @@ export async function runSync(): Promise<SyncOutcome> {
         );
         await tx.execute(sql`
           update sponsor_routes as sr
-          set is_current = false, last_seen_at = ${registerDate}
+          set is_current = false, last_seen_at = ${registerDate.toISOString()}::timestamptz
           from (values ${rows}) as v(sponsor_id, route)
           where sr.sponsor_id = v.sponsor_id and sr.route = v.route and sr.is_current = true
         `);
@@ -386,7 +390,7 @@ export async function runSync(): Promise<SyncOutcome> {
         );
         await tx.execute(sql`
           update sponsor_routes as sr
-          set rating = v.rating, last_seen_at = ${registerDate}
+          set rating = v.rating, last_seen_at = ${registerDate.toISOString()}::timestamptz
           from (values ${rows}) as v(sponsor_id, route, rating)
           where sr.sponsor_id = v.sponsor_id and sr.route = v.route and sr.is_current = true
         `);
