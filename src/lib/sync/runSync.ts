@@ -449,7 +449,13 @@ export async function runSync(): Promise<SyncOutcome> {
       sponsorsUpdatedCount: diff.sponsorsUpdatedCount,
     };
   } catch (err) {
-    const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause : null;
+    // Diagnostic only (temporary, like the elapsed-time checkpoints above) - drizzle's own
+    // Error.message/.stack for a failed query doesn't surface the underlying Postgres error
+    // (code/detail/position), only the query text and params. Remove once the sync reliably
+    // completes under real load.
+    const causeDetails = cause ? ` | CAUSE: ${cause.message} | code=${(cause as { code?: string }).code} detail=${(cause as { detail?: string }).detail} position=${(cause as { position?: string }).position}` : "";
+    const message = (err instanceof Error ? (err.stack ?? err.message) : String(err)) + causeDetails;
     await db
       .update(syncRuns)
       .set({ status: "failed", finishedAt: new Date(), errorMessage: message })
