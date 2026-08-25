@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db, describeDbTarget, getRawPostgresClient } from "@/db/client";
 import { syncRuns, snapshots, stagedRows, sponsors, sponsorRoutes, sponsorEvents } from "@/db/schema";
 import { resolveCurrentSource, fetchCsv } from "../../../scripts/lib/contentApi";
@@ -243,17 +243,6 @@ export async function runSync(): Promise<SyncOutcome> {
 
     const registerDate = new Date(source.registerPublicUpdatedAt);
 
-    // Pipeline depth for per-row updates below - postgres.js automatically pipelines queries
-    // fired without awaiting each one individually on the same connection, so firing this many
-    // at once collapses N round-trips down to roughly one RTT plus execution time instead of
-    // N x RTT. Confirmed live and necessary, not just theoretical: production run id 91
-    // (2026-08-25) completed the fully-batched staging insert (all 141,719 rows) but still hit
-    // the 60s timeout with 0 sponsor_events written - it died in this exact per-row phase,
-    // catching up ~5 days of accumulated backlog against Aiven's real (Amsterdam, transatlantic
-    // from this route's iad1 execution region) latency. Bounded rather than firing all rows in
-    // one Promise.all so pipeline depth doesn't grow unbounded on a very large backlog.
-    const UPDATE_PIPELINE_DEPTH = 1000;
-
     console.log(`[sync] entering transaction at ${elapsed()}`);
     await db.transaction(async (tx) => {
       // Inserts are batched (one network round-trip per BATCH_SIZE rows, not per row) - a plain
@@ -290,22 +279,46 @@ export async function runSync(): Promise<SyncOutcome> {
 
       console.log(`[sync] inserted ${insertUpserts.length} new sponsors at ${elapsed()}`);
 
-      for (const batch of chunk(updateUpserts, UPDATE_PIPELINE_DEPTH)) {
-        await Promise.all(
-          batch.map((u) => {
-            const id = idByIdentityKey.get(u.identityKey);
-            if (!id) throw new Error(`No existing sponsor id for identity "${u.identityKey}" during ${u.action}`);
-            return tx
-              .update(sponsors)
-              .set(
-                u.action === "remove"
-                  ? { displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants, status: "unknown", updatedAt: new Date() }
-                  : { displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants, status: "active", lastSeenAt: registerDate, updatedAt: new Date() }
-              )
-              .where(eq(sponsors.id, id));
-          })
-        );
+      // A per-row Promise.all here (fired on `tx`, pinned to one transactional connection) was
+      // measured live (2026-08-25, run id 95) at ~184ms/row - basically one round-trip per row,
+      // not pipelined the way the same pattern is for plain `db` queries outside a transaction.
+      // 123 rows took 22.6s here alone, versus ~1s for a 193-row batched INSERT just before it.
+      // A single multi-row UPDATE ... FROM (VALUES ...) is the reliable fix: one round-trip
+      // regardless of how many rows, same principle as the batched inserts above.
+      const toFieldUpdate = (u: (typeof updateUpserts)[number]) => {
+        const id = idByIdentityKey.get(u.identityKey);
+        if (!id) throw new Error(`No existing sponsor id for identity "${u.identityKey}" during ${u.action}`);
+        return { id, displayName: u.displayName, town: u.town, county: u.county, region: u.region, sector: u.sector, nameVariants: u.nameVariants };
+      };
+
+      async function bulkUpdateSponsorFields(items: ReturnType<typeof toFieldUpdate>[], setSuffix: ReturnType<typeof sql>) {
+        for (const batch of chunk(items, BATCH_SIZE)) {
+          if (batch.length === 0) continue;
+          const rows = sql.join(
+            batch.map(
+              (r) =>
+                sql`(${r.id}::uuid, ${r.displayName}::text, ${r.town}::text, ${r.county}::text, ${r.region}::text, ${r.sector}::text, ${r.nameVariants}::text[])`
+            ),
+            sql`, `
+          );
+          await tx.execute(sql`
+            update sponsors as s
+            set display_name = v.display_name, town = v.town, county = v.county, region = v.region, sector = v.sector,
+                name_variants = v.name_variants, updated_at = now(), ${setSuffix}
+            from (values ${rows}) as v(id, display_name, town, county, region, sector, name_variants)
+            where s.id = v.id
+          `);
+        }
       }
+
+      await bulkUpdateSponsorFields(
+        updateUpserts.filter((u) => u.action === "remove").map(toFieldUpdate),
+        sql`status = 'unknown'`
+      );
+      await bulkUpdateSponsorFields(
+        updateUpserts.filter((u) => u.action !== "remove").map(toFieldUpdate),
+        sql`status = 'active', last_seen_at = ${registerDate}`
+      );
       console.log(`[sync] updated ${updateUpserts.length} existing sponsors at ${elapsed()}`);
 
       const insertRoutes = diff.routeChanges.filter((rc) => rc.action === "add");
@@ -329,22 +342,42 @@ export async function runSync(): Promise<SyncOutcome> {
       }
       console.log(`[sync] inserted/upserted ${insertRoutes.length} routes at ${elapsed()}`);
 
-      for (const batch of chunk(otherRoutes, UPDATE_PIPELINE_DEPTH)) {
-        await Promise.all(
-          batch.map((rc) => {
-            const sponsorId = idByIdentityKey.get(rc.identityKey);
-            if (!sponsorId) throw new Error(`No sponsor id for identity "${rc.identityKey}" during route ${rc.action}`);
-            return rc.action === "deactivate"
-              ? tx
-                  .update(sponsorRoutes)
-                  .set({ isCurrent: false, lastSeenAt: registerDate })
-                  .where(and(eq(sponsorRoutes.sponsorId, sponsorId), eq(sponsorRoutes.route, rc.route), eq(sponsorRoutes.isCurrent, true)))
-              : tx
-                  .update(sponsorRoutes)
-                  .set({ rating: rc.rating, lastSeenAt: registerDate })
-                  .where(and(eq(sponsorRoutes.sponsorId, sponsorId), eq(sponsorRoutes.route, rc.route), eq(sponsorRoutes.isCurrent, true)));
-          })
+      // Same fix as the sponsors update above - one multi-row UPDATE per batch instead of one
+      // round-trip per row.
+      const toRouteKey = (rc: (typeof otherRoutes)[number]) => {
+        const sponsorId = idByIdentityKey.get(rc.identityKey);
+        if (!sponsorId) throw new Error(`No sponsor id for identity "${rc.identityKey}" during route ${rc.action}`);
+        return { sponsorId, route: rc.route, rating: rc.rating };
+      };
+
+      const deactivateRoutes = otherRoutes.filter((rc) => rc.action === "deactivate").map(toRouteKey);
+      for (const batch of chunk(deactivateRoutes, BATCH_SIZE)) {
+        if (batch.length === 0) continue;
+        const rows = sql.join(
+          batch.map((r) => sql`(${r.sponsorId}::uuid, ${r.route}::text)`),
+          sql`, `
         );
+        await tx.execute(sql`
+          update sponsor_routes as sr
+          set is_current = false, last_seen_at = ${registerDate}
+          from (values ${rows}) as v(sponsor_id, route)
+          where sr.sponsor_id = v.sponsor_id and sr.route = v.route and sr.is_current = true
+        `);
+      }
+
+      const ratingUpdateRoutes = otherRoutes.filter((rc) => rc.action !== "deactivate").map(toRouteKey);
+      for (const batch of chunk(ratingUpdateRoutes, BATCH_SIZE)) {
+        if (batch.length === 0) continue;
+        const rows = sql.join(
+          batch.map((r) => sql`(${r.sponsorId}::uuid, ${r.route}::text, ${r.rating}::text)`),
+          sql`, `
+        );
+        await tx.execute(sql`
+          update sponsor_routes as sr
+          set rating = v.rating, last_seen_at = ${registerDate}
+          from (values ${rows}) as v(sponsor_id, route, rating)
+          where sr.sponsor_id = v.sponsor_id and sr.route = v.route and sr.is_current = true
+        `);
       }
 
       console.log(`[sync] updated/deactivated ${otherRoutes.length} routes at ${elapsed()}`);
