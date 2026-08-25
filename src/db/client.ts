@@ -35,7 +35,7 @@ function createDb() {
       );
     }
     const client = postgres(process.env.DATABASE_URL, { prepare: false });
-    return { db: drizzlePostgres(client, { schema }), driver: "postgres" as const, client: null as PGlite | null };
+    return { db: drizzlePostgres(client, { schema }), driver: "postgres" as const, client };
   }
 
   const client = new PGlite("./.pglite-data");
@@ -58,6 +58,14 @@ function getInstance(): DbHandle {
 export const dbHandle = getInstance();
 export const db = dbHandle.db;
 export const dbDriver = dbHandle.driver;
+
+/** The raw postgres-js client, for operations drizzle doesn't expose (e.g. COPY streaming). */
+export function getRawPostgresClient(): postgres.Sql {
+  if (dbHandle.driver !== "postgres") {
+    throw new Error("getRawPostgresClient() was called while running against pglite (DB_DRIVER=pglite)");
+  }
+  return dbHandle.client as postgres.Sql;
+}
 
 /** Safe-to-log description of what this process is actually writing to - never includes credentials. */
 export function describeDbTarget(): string {

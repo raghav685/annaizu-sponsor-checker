@@ -4,8 +4,10 @@
  * "what cron runs" and "what you run by hand".
  */
 import { createHash } from "node:crypto";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { and, eq, desc, sql } from "drizzle-orm";
-import { db, describeDbTarget } from "@/db/client";
+import { db, describeDbTarget, getRawPostgresClient } from "@/db/client";
 import { syncRuns, snapshots, stagedRows, sponsors, sponsorRoutes, sponsorEvents } from "@/db/schema";
 import { resolveCurrentSource, fetchCsv } from "../../../scripts/lib/contentApi";
 import { parseRegisterCsv } from "../../../scripts/lib/parseRegister";
@@ -19,18 +21,12 @@ const HALT_THRESHOLD = 0.02; // >2% of active sponsors removed in one publish ha
 // route runs in iad1 (US East), and at BATCH_SIZE=500 the staging insert alone needed ~282
 // round-trips. It got killed by the 60s maxDuration at 108,500/~141k staged rows (0
 // sponsor_events written - the live sponsors table was never touched, so no data corruption,
-// just a killed run). Raised again (500 -> 3000 -> 5000) to cut round-trips further; still
-// comfortably under Postgres's ~65,535-parameter-per-query limit for every table this batches
-// (the widest is sponsors at 11 columns: 5000 x 11 = 55,000).
-const BATCH_SIZE = 5000;
-// Sequential batches still weren't enough on their own (run id 93, 2026-08-25: BATCH_SIZE=3000
-// completed staging but consumed 52 of the 60s budget). The staging insert is the one place in
-// this file that runs on plain `db` outside a transaction, so unlike the update loops below
-// (pinned to a single transactional connection `tx`) it can actually use postgres-js's
-// connection pool for real multi-connection parallelism, not just single-connection pipelining.
-// 8 stays under the driver's default pool size of 10 (src/db/client.ts sets no `max`), leaving
-// headroom for the current-sponsors/current-routes loads that immediately follow.
-const STAGING_INSERT_CONCURRENCY = 8;
+// just a killed run). Raised to 3000 to cut round-trips proportionally; still comfortably under
+// Postgres's ~65,535-parameter-per-query limit for every table this batches (the widest is
+// sponsors at 11 columns: 3000 x 11 = 33,000). Note this constant no longer governs the staging
+// insert itself (see copyStagingRows below) - only the smaller insert/update loops further down,
+// whose true size on a normal day (a few hundred diffed rows) was never actually the bottleneck.
+const BATCH_SIZE = 3000;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -38,15 +34,45 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<unknown>): Promise<void> {
-  let next = 0;
-  async function runNext(): Promise<void> {
-    const i = next++;
-    if (i >= items.length) return;
-    await worker(items[i]);
-    return runNext();
+// COPY, not batched parameterized INSERTs, for staging: raising BATCH_SIZE (500 -> 3000 -> 5000)
+// and then parallelizing across the connection pool (run id 94, 2026-08-25) both failed to fix
+// this, the second attempt making it *worse* (didn't even finish staging in 55s, versus 52s
+// single-connection sequential) - strong evidence the bottleneck is data volume/protocol
+// overhead against a slow transatlantic link, not round-trip count, so more connections just
+// added contention instead of parallelism. COPY streams the whole payload as one continuous
+// operation on a single connection - no per-batch bind/execute overhead at all - which is the
+// standard fix for bulk-loading over a high-latency/low-bandwidth link.
+function copyEscape(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "\\N";
+  return String(value).replace(/\\/g, "\\\\").replace(/\t/g, "\\t").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+}
+
+async function copyStagingRows(rows: (typeof stagedRows.$inferInsert)[]): Promise<void> {
+  const pg = getRawPostgresClient();
+  const writable = await pg`
+    copy staged_rows
+      (sync_run_id, match_key, display_name, town, county, region, sector, route, rating, sponsor_type)
+    from stdin
+  `.writable();
+
+  async function* chunksOf(source: typeof rows) {
+    const CHUNK_ROWS = 5000;
+    let buf = "";
+    for (let i = 0; i < source.length; i++) {
+      const r = source[i];
+      buf +=
+        [r.syncRunId, r.matchKey, r.displayName, r.town, r.county, r.region, r.sector, r.route, r.rating, r.sponsorType]
+          .map(copyEscape)
+          .join("\t") + "\n";
+      if ((i + 1) % CHUNK_ROWS === 0) {
+        yield buf;
+        buf = "";
+      }
+    }
+    if (buf) yield buf;
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, runNext));
+
+  await pipeline(Readable.from(chunksOf(rows)), writable);
 }
 
 export type SyncOutcome =
@@ -137,7 +163,7 @@ export async function runSync(): Promise<SyncOutcome> {
         sponsorType: r.sponsorType,
       }))
     );
-    await runWithConcurrency(chunk(stagingRows, BATCH_SIZE), STAGING_INSERT_CONCURRENCY, (batch) => db.insert(stagedRows).values(batch));
+    await copyStagingRows(stagingRows);
     console.log(`[sync] staged ${stagingRows.length} rows at ${elapsed()}`);
 
     const stagedGroups: StagedSponsorGroup[] = parsed.sponsors.map((s) => ({
