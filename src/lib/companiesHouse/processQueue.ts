@@ -6,7 +6,7 @@
  * leaves the sponsor at `unknown` / routes to sponsor_review_queue instead
  * of asserting a status the data doesn't support.
  */
-import { and, asc, desc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { sponsors, sponsorEvents, sponsorReviewQueue } from "@/db/schema";
 import { lookupsUsedInWindow, RATE_LIMIT_MAX_LOOKUPS } from "./cache";
@@ -46,15 +46,28 @@ async function pickBatch(limit: number) {
 
   if (priority.length >= limit) return priority;
 
-  // Priority 2: background backfill for active sponsors with no CH data yet.
+  // Priority 2: sponsors already matched to a company number before the incorporation-date/
+  // registered-office/company-type/matched-on fields existed - reprocess so those columns get
+  // backfilled. Cheap: resolveCompanyForName's 30-day cache means this is almost never a real
+  // API call, just re-reading the cached lookup and re-writing the row.
+  const enrichmentBackfill = await db
+    .select()
+    .from(sponsors)
+    .where(and(isNotNull(sponsors.companiesHouseNumber), isNull(sponsors.companiesHouseIncorporatedAt)))
+    .orderBy(asc(sponsors.companiesHouseMatchedAt))
+    .limit(limit - priority.length);
+
+  if (priority.length + enrichmentBackfill.length >= limit) return [...priority, ...enrichmentBackfill];
+
+  // Priority 3: background backfill for active sponsors with no CH data yet.
   const backfill = await db
     .select()
     .from(sponsors)
     .where(and(eq(sponsors.status, "active"), isNull(sponsors.companiesHouseMatchedAt)))
     .orderBy(asc(sponsors.firstSeenAt))
-    .limit(limit - priority.length);
+    .limit(limit - priority.length - enrichmentBackfill.length);
 
-  return [...priority, ...backfill];
+  return [...priority, ...enrichmentBackfill, ...backfill];
 }
 
 export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<ProcessQueueResult> {
@@ -116,16 +129,39 @@ export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<Pro
         similarityScore: String(Math.max(...matchResult.allMatches.map((m) => m.confidence))),
         status: "pending",
       });
+      await db
+        .update(sponsors)
+        .set({
+          companiesHouseNeedsReview: true,
+          companiesHouseMatchedOn: `${matchResult.allMatches.length} name variant(s) resolved to different companies - see sponsor_review_queue`,
+          companiesHouseMatchedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sponsors.id, sponsor.id));
       result.divergentFlagged++;
       continue;
     }
+
+    // Every attempt records confidence + basis, even a non-match - "why does the system
+    // believe (or not believe) this" must be answerable for every processed record, not
+    // just the successful ones.
+    const attemptedOn =
+      matchResult.allMatches.length > 0
+        ? `best of ${matchResult.allMatches.length} variant(s): "${matchResult.allMatches.slice().sort((a, b) => b.confidence - a.confidence)[0].variant}" vs "${matchResult.allMatches.slice().sort((a, b) => b.confidence - a.confidence)[0].matchedCompanyName ?? "no CH result"}"`
+        : "no name variants to try";
 
     if (!matchResult.bestMatch || matchResult.confidence < CONFIDENT_THRESHOLD) {
       // No confident match - leave as unknown, but record that we tried so
       // this doesn't get re-picked every single run before RECHECK_AFTER_DAYS.
       await db
         .update(sponsors)
-        .set({ companiesHouseMatchedAt: new Date(), statusConfidence: String(matchResult.confidence), updatedAt: new Date() })
+        .set({
+          companiesHouseMatchedAt: new Date(),
+          companiesHouseMatchConfidence: String(matchResult.confidence),
+          companiesHouseMatchedOn: `Below confidence threshold (${(CONFIDENT_THRESHOLD * 100).toFixed(0)}%) - ${attemptedOn}`,
+          statusConfidence: String(matchResult.confidence),
+          updatedAt: new Date(),
+        })
         .where(eq(sponsors.id, sponsor.id));
       result.unmatched++;
       continue;
@@ -133,6 +169,7 @@ export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<Pro
 
     const { bestMatch } = matchResult;
     const sicCode = bestMatch.sicCodes?.[0] ?? null;
+    const matchedOn = `name variant "${bestMatch.variant}" -> "${bestMatch.matchedCompanyName}" (${bestMatch.fromCache ? "cached" : "fresh"} lookup, ${(matchResult.confidence * 100).toFixed(0)}% name similarity)`;
 
     if (sponsor.status === "unknown") {
       const newStatus = classifyCompanyStatus(bestMatch.companyStatus ?? "");
@@ -144,6 +181,11 @@ export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<Pro
           companiesHouseNumber: bestMatch.matchedCompanyNumber,
           companiesHouseMatchConfidence: String(matchResult.confidence),
           companiesHouseMatchedAt: new Date(),
+          companiesHouseMatchedOn: matchedOn,
+          companiesHouseIncorporatedAt: bestMatch.incorporatedAt,
+          companiesHouseRegisteredOffice: bestMatch.registeredOffice,
+          companiesHouseCompanyType: bestMatch.companyType,
+          companiesHouseNeedsReview: false,
           sicCode,
           industrySource: sicCode ? "companies_house" : sponsor.industrySource,
           updatedAt: new Date(),
@@ -161,13 +203,18 @@ export async function processCompaniesHouseQueue(maxToProcess = 50): Promise<Pro
       });
       result.reclassified++;
     } else {
-      // Background backfill on an active sponsor - industry/SIC only, no status change.
+      // Background backfill on an active sponsor - industry/SIC + CH profile fields, no status change.
       await db
         .update(sponsors)
         .set({
           companiesHouseNumber: bestMatch.matchedCompanyNumber,
           companiesHouseMatchConfidence: String(matchResult.confidence),
           companiesHouseMatchedAt: new Date(),
+          companiesHouseMatchedOn: matchedOn,
+          companiesHouseIncorporatedAt: bestMatch.incorporatedAt,
+          companiesHouseRegisteredOffice: bestMatch.registeredOffice,
+          companiesHouseCompanyType: bestMatch.companyType,
+          companiesHouseNeedsReview: false,
           sicCode,
           industrySource: sicCode ? "companies_house" : sponsor.industrySource,
           updatedAt: new Date(),

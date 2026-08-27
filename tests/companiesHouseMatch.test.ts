@@ -4,7 +4,17 @@ import { matchSponsorToCompaniesHouse } from "../src/lib/companiesHouse/match";
 import type { CachedLookup } from "../src/lib/companiesHouse/cache";
 
 function lookup(overrides: Partial<CachedLookup> = {}): CachedLookup {
-  return { matchedCompanyNumber: null, matchedCompanyName: null, companyStatus: null, sicCodes: null, fromCache: false, ...overrides };
+  return {
+    matchedCompanyNumber: null,
+    matchedCompanyName: null,
+    companyStatus: null,
+    sicCodes: null,
+    incorporatedAt: null,
+    registeredOffice: null,
+    companyType: null,
+    fromCache: false,
+    ...overrides,
+  };
 }
 
 test("matchSponsorToCompaniesHouse: a single confident variant match is accepted", async () => {

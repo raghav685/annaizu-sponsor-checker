@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { companiesHouseCache } from "@/db/schema";
-import { searchCompanies, getCompanyProfile, type CompanySearchResult, type CompanyProfile } from "./client";
+import { searchCompanies, getCompanyProfile, formatRegisteredOffice, type CompanySearchResult, type CompanyProfile } from "./client";
 
 const CACHE_TTL_DAYS = 30;
 // Companies House's documented limit is 600 requests / 5 minutes per key.
@@ -16,6 +16,9 @@ export interface CachedLookup {
   matchedCompanyName: string | null;
   companyStatus: string | null;
   sicCodes: string[] | null;
+  incorporatedAt: string | null;
+  registeredOffice: string | null;
+  companyType: string | null;
   fromCache: boolean;
 }
 
@@ -53,6 +56,9 @@ export async function resolveCompanyForName(queryName: string): Promise<CachedLo
       matchedCompanyName: cached.matchedCompanyName,
       companyStatus: cached.companyStatus,
       sicCodes: cached.sicCodes,
+      incorporatedAt: cached.incorporatedAt,
+      registeredOffice: cached.registeredOffice,
+      companyType: cached.companyType,
       fromCache: true,
     };
   }
@@ -62,12 +68,19 @@ export async function resolveCompanyForName(queryName: string): Promise<CachedLo
   let profile: CompanyProfile | null = null;
   if (top) profile = await getCompanyProfile(top.company_number);
 
+  const incorporatedAt = profile?.date_of_creation ?? null;
+  const registeredOffice = formatRegisteredOffice(profile?.registered_office_address);
+  const companyType = profile?.company_type ?? null;
+
   await db.insert(companiesHouseCache).values({
     queryName,
     matchedCompanyNumber: top?.company_number ?? null,
     matchedCompanyName: top?.title ?? null,
     companyStatus: profile?.company_status ?? top?.company_status ?? null,
     sicCodes: profile?.sic_codes ?? null,
+    incorporatedAt,
+    registeredOffice,
+    companyType,
     rawResponse: { search: results, profile },
     expiresAt: new Date(Date.now() + CACHE_TTL_DAYS * 86_400_000),
   });
@@ -77,6 +90,9 @@ export async function resolveCompanyForName(queryName: string): Promise<CachedLo
     matchedCompanyName: top?.title ?? null,
     companyStatus: profile?.company_status ?? top?.company_status ?? null,
     sicCodes: profile?.sic_codes ?? null,
+    incorporatedAt,
+    registeredOffice,
+    companyType,
     fromCache: false,
   };
 }

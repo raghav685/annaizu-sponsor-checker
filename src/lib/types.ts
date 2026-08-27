@@ -56,6 +56,21 @@ export interface Sponsor {
   /** Verified official links only - null means "not yet looked up," never a guessed/search URL. */
   website: string | null;
   linkedin: string | null;
+  /** Companies House match, if one has been attempted - only ever populated for
+   *  suspended/revoked sponsors (see docs/data-pipeline.md's Companies House phase).
+   *  null means "no match attempt recorded yet", not "confirmed no match". */
+  companiesHouse: CompaniesHouseInfo | null;
+}
+
+export interface CompaniesHouseInfo {
+  number: string | null;
+  matchConfidence: number | null;
+  matchedAt: string | null;
+  matchedOn: string | null;
+  needsReview: boolean;
+  incorporatedAt: string | null;
+  registeredOffice: string | null;
+  companyType: string | null;
 }
 
 export interface NamedCount {

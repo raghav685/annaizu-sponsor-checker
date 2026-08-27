@@ -55,6 +55,7 @@ export async function getSponsorBySlug(slug: string): Promise<Sponsor | undefine
     status: "active",
     website: row.website,
     linkedin: row.linkedin,
+    companiesHouse: null,
   };
 }
 
@@ -85,6 +86,7 @@ export async function getOtherSponsorsInTown(town: string, excludeSlug: string, 
       status: "active",
       website: row.website,
       linkedin: row.linkedin,
+      companiesHouse: null,
     });
   }
   return results;

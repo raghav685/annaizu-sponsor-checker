@@ -66,6 +66,39 @@ const STATUS_DOT_COLOR: Record<Sponsor["status"], string> = {
   revoked: "bg-mist-dim",
 };
 
+/** Native-tooltip summary of a sponsor's Companies House match, if any - deliberately not a
+ *  new column/layout element (see docs/data-pipeline.md Companies House phase): the existing
+ *  Status cell just gets a small superscript marker for suspended/revoked rows that have one. */
+function companiesHouseTooltip(sponsor: Sponsor): string | null {
+  const ch = sponsor.companiesHouse;
+  if (!ch) return null;
+  if (ch.needsReview) return "Companies House: multiple plausible company matches found - flagged for manual review, not auto-attached.";
+  if (!ch.number) {
+    const pct = ch.matchConfidence !== null ? `${Math.round(ch.matchConfidence * 100)}%` : "unknown";
+    return `Companies House: no confident match found (best candidate ${pct} similarity).`;
+  }
+  const parts = [`Companies House: ${ch.number}`];
+  if (ch.companyType) parts.push(ch.companyType);
+  if (ch.incorporatedAt) parts.push(`incorporated ${new Date(ch.incorporatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`);
+  if (ch.registeredOffice) parts.push(ch.registeredOffice);
+  if (ch.matchConfidence !== null) parts.push(`${Math.round(ch.matchConfidence * 100)}% match confidence`);
+  return parts.join(" · ");
+}
+
+function CompaniesHouseMarker({ sponsor }: { sponsor: Sponsor }) {
+  const tooltip = companiesHouseTooltip(sponsor);
+  if (!tooltip) return null;
+  return (
+    <span
+      title={tooltip}
+      aria-label={tooltip}
+      className="ml-0.5 inline-flex h-3.5 w-3.5 shrink-0 cursor-help items-center justify-center rounded-full border border-white/15 font-mono text-[9px] leading-none text-mist-dim"
+    >
+      i
+    </span>
+  );
+}
+
 export function SponsorTableRow({ sponsor, height }: { sponsor: Sponsor; height: number }) {
   const router = useRouter();
   const href = `/sponsor/${sponsor.id}`;
@@ -93,6 +126,7 @@ export function SponsorTableRow({ sponsor, height }: { sponsor: Sponsor; height:
       <span className={`inline-flex items-center gap-1.5 font-mono text-xs ${STATUS_COLOR[sponsor.status]}`}>
         <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLOR[sponsor.status]}`} />
         {STATUS_LABEL[sponsor.status]}
+        <CompaniesHouseMarker sponsor={sponsor} />
       </span>
       <SponsorLinks />
       <span className="whitespace-nowrap text-right font-mono text-xs text-mist-dim">{formatAdded(sponsor.firstSeenAt)}</span>
@@ -136,6 +170,7 @@ export function SponsorCard({ sponsor, height }: { sponsor: Sponsor; height: num
         <span className={`inline-flex items-center gap-1.5 font-mono text-xs ${STATUS_COLOR[sponsor.status]}`}>
           <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLOR[sponsor.status]}`} />
           {STATUS_LABEL[sponsor.status]}
+          <CompaniesHouseMarker sponsor={sponsor} />
         </span>
         <div className="flex items-center gap-3">
           <SponsorLinks />

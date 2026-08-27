@@ -102,6 +102,18 @@ async function hydrateSponsorRows(rows: SponsorRow[], reactivatedIds?: Set<strin
       status: s.status !== "active" ? "revoked" : reactivatedIds?.has(s.id) ? "suspended" : "active",
       website: s.website,
       linkedin: s.linkedin,
+      companiesHouse: s.companiesHouseMatchedAt
+        ? {
+            number: s.companiesHouseNumber,
+            matchConfidence: s.companiesHouseMatchConfidence !== null ? Number(s.companiesHouseMatchConfidence) : null,
+            matchedAt: new Date(s.companiesHouseMatchedAt).toISOString(),
+            matchedOn: s.companiesHouseMatchedOn,
+            needsReview: s.companiesHouseNeedsReview,
+            incorporatedAt: s.companiesHouseIncorporatedAt,
+            registeredOffice: s.companiesHouseRegisteredOffice,
+            companyType: s.companiesHouseCompanyType,
+          }
+        : null,
     };
   });
 }
@@ -180,6 +192,23 @@ export async function loadBrowseIndex(): Promise<{
     rows.map((r) => ({ slug: slugify(r.name), name: r.name, count: r.count })).sort((a, b) => b.count - a.count);
 
   return { cities: toEntries(cityRows), sectors: toEntries(sectorRows), routes: toEntries(routeRows) };
+}
+
+/**
+ * Global (unfiltered) town/county option lists with counts, for the sidebar's typeahead
+ * pickers - these must list every town/county in the active dataset regardless of the
+ * current filter selection, unlike Stats.topTowns/topCounties (top-25 of the FILTERED set).
+ */
+export async function loadTownCountyFacets(): Promise<{
+  towns: { name: string; count: number }[];
+  counties: { name: string; count: number }[];
+}> {
+  const [townRows, countyRows] = await Promise.all([
+    db.select({ name: sponsors.town, count: count() }).from(sponsors).where(eq(sponsors.status, "active")).groupBy(sponsors.town),
+    db.select({ name: sponsors.county, count: count() }).from(sponsors).where(eq(sponsors.status, "active")).groupBy(sponsors.county),
+  ]);
+  const sortDesc = (rows: { name: string; count: number }[]) => rows.filter((r) => r.name).sort((a, b) => b.count - a.count);
+  return { towns: sortDesc(townRows), counties: sortDesc(countyRows) };
 }
 
 export interface TownCoverageRow {

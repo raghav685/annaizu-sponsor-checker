@@ -174,6 +174,18 @@ export const sponsors = pgTable(
   companiesHouseNumber: text("companies_house_number"),
   companiesHouseMatchConfidence: numeric("companies_house_match_confidence"),
   companiesHouseMatchedAt: timestamp("companies_house_matched_at", { withTimezone: true }),
+  // What the match was actually based on (e.g. which name variant, and by what method) -
+  // required so a human reviewing a match can tell why the system believes it, not just
+  // the resulting confidence number.
+  companiesHouseMatchedOn: text("companies_house_matched_on"),
+  companiesHouseIncorporatedAt: date("companies_house_incorporated_at"),
+  companiesHouseRegisteredOffice: text("companies_house_registered_office"),
+  companiesHouseCompanyType: text("companies_house_company_type"),
+  // True when name variants for this sponsor confidently resolved to DIFFERENT company
+  // numbers (see match.ts's `divergent` case) - never auto-picked, always routed to
+  // sponsor_review_queue instead. Kept on the row itself (in addition to the queue entry)
+  // so the frontend can flag it without a join.
+  companiesHouseNeedsReview: boolean("companies_house_needs_review").notNull().default(false),
 
   // Verified official website / LinkedIn company page - never a guessed or
   // search-fallback URL (see SponsorLinks.tsx). Null means "not yet looked
@@ -318,6 +330,9 @@ export const companiesHouseCache = pgTable(
     matchConfidence: numeric("match_confidence"),
     companyStatus: text("company_status"),
     sicCodes: text("sic_codes").array(),
+    incorporatedAt: date("incorporated_at"),
+    registeredOffice: text("registered_office"),
+    companyType: text("company_type"),
     rawResponse: jsonb("raw_response"),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),

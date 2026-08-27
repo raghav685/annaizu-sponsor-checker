@@ -17,9 +17,26 @@ export interface CompanyProfile {
   company_number: string;
   company_name: string;
   company_status: string; // 'active' | 'dissolved' | 'liquidation' | 'administration' | 'receivership' | 'voluntary-arrangement' | ...
+  company_type?: string; // 'ltd' | 'plc' | 'llp' | 'community-interest-company' | ...
+  date_of_creation?: string; // incorporation date, YYYY-MM-DD
   sic_codes?: string[];
   date_of_cessation?: string;
   registered_office_address?: Record<string, string>;
+}
+
+/** Flattens Companies House's address object into the single line the frontend displays. */
+export function formatRegisteredOffice(address: Record<string, string> | undefined): string | null {
+  if (!address) return null;
+  const parts = [
+    address.premises,
+    address.address_line_1,
+    address.address_line_2,
+    address.locality,
+    address.region,
+    address.postal_code,
+    address.country,
+  ].filter((p): p is string => Boolean(p && p.trim()));
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function authHeader(): string {
