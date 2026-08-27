@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, inArray, notInArray } from "drizzle-orm";
 import { db, describeDbTarget, getRawPostgresClient } from "@/db/client";
 import { syncRuns, snapshots, stagedRows, sponsors, sponsorRoutes, sponsorEvents } from "@/db/schema";
 import { resolveCurrentSource, fetchCsv } from "../../../scripts/lib/contentApi";
@@ -155,6 +155,22 @@ export async function runSync(): Promise<SyncOutcome> {
       .where(eq(syncRuns.id, staleRunning.id));
     console.warn(`[sync] Auto-resolved stale "running" run ${staleRunning.id} (started ${new Date(staleRunning.startedAt).toISOString()}) before starting a new one.`);
   }
+
+  // staged_rows is a working table (parsed CSV rows land here before the diff/commit phase,
+  // see the table's own schema comment) that nothing has ever cleaned up - confirmed live:
+  // it had accumulated ~1.9M rows / 465MB across this project's history and put the whole
+  // database into Aiven's forced read-only mode (disk quota exhausted), taking down every
+  // write path (this sync, the Companies House queue, everything) until a human noticed the
+  // alert and ran a manual DELETE. A halted_for_review run's staged rows are the one
+  // legitimate reason to keep them (a human needs to inspect exactly what was staged), so
+  // this only ever removes rows belonging to a run that's fully done and not under review -
+  // safe to run on every invocation, not just as a one-off cleanup.
+  await db.delete(stagedRows).where(
+    inArray(
+      stagedRows.syncRunId,
+      db.select({ id: syncRuns.id }).from(syncRuns).where(notInArray(syncRuns.status, ["running", "halted_for_review"]))
+    )
+  );
 
   let run: typeof syncRuns.$inferSelect;
   try {
