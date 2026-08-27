@@ -411,15 +411,28 @@ export async function runSync(): Promise<SyncOutcome> {
         .where(eq(syncRuns.id, run.id));
     });
 
-    const gzipped = await gzip(csvBuffer);
-    const stored = await putSnapshot(`snapshots/${source.registerPublicUpdatedAt.slice(0, 10)}-${fileSha256.slice(0, 12)}.csv.gz`, gzipped);
-    await db.insert(snapshots).values({
-      syncRunId: run.id,
-      fileSha256,
-      blobUrl: stored.url,
-      blobKey: stored.key,
-      sizeBytes: gzipped.length,
-    });
+    // Snapshot archival happens AFTER the sponsors/routes/events transaction has already
+    // committed (syncRuns.status is set to "success" inside it, above) - a Blob storage
+    // hiccup here must not fall through to the catch below and overwrite that to "failed".
+    // That would misreport a real, already-committed success as a failure, which trips
+    // /api/health's dead-man's-switch (lastRunOk checks the latest run's status) on a sync
+    // that actually worked.
+    try {
+      const gzipped = await gzip(csvBuffer);
+      const stored = await putSnapshot(`snapshots/${source.registerPublicUpdatedAt.slice(0, 10)}-${fileSha256.slice(0, 12)}.csv.gz`, gzipped);
+      await db.insert(snapshots).values({
+        syncRunId: run.id,
+        fileSha256,
+        blobUrl: stored.url,
+        blobKey: stored.key,
+        sizeBytes: gzipped.length,
+      });
+    } catch (err) {
+      console.error(
+        `[sync] Snapshot archival failed for run ${run.id} - sync itself already committed successfully, not retried/blocking:`,
+        err
+      );
+    }
 
     return {
       status: "success",
