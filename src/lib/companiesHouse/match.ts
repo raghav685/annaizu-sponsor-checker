@@ -1,4 +1,4 @@
-import { similarity } from "../../../scripts/lib/matchKey";
+import { similarity, buildMatchKey } from "../../../scripts/lib/matchKey";
 import type { CachedLookup } from "./cache";
 
 export interface VariantMatch extends CachedLookup {
@@ -15,9 +15,17 @@ export interface SponsorMatchResult {
 
 const CONFIDENT_THRESHOLD = 0.82; // below this, we say "unknown" rather than guess
 
+// Normalises both names (strip LTD/LIMITED/PLC/&-vs-AND/punctuation - see buildMatchKey)
+// before scoring, same as sponsor identity matching already does within a sync run. Without
+// this, a completely unambiguous match like "Smith & Sons Builders" vs Companies House's own
+// "SMITH AND SONS BUILDERS LIMITED" scores below CONFIDENT_THRESHOLD purely on the cosmetic
+// legal-suffix/punctuation difference and gets left as an avoidable "unmatched" - a real
+// completeness gap, not a safety one (the system already errs toward not-matching over
+// guessing wrong), but one worth closing since normalising can only raise a genuine match's
+// score, never manufacture a false one between two actually-different organisations.
 function scoreMatch(queryName: string, lookup: CachedLookup): number {
   if (!lookup.matchedCompanyName) return 0;
-  return similarity(queryName.toUpperCase(), lookup.matchedCompanyName.toUpperCase());
+  return similarity(buildMatchKey(queryName), buildMatchKey(lookup.matchedCompanyName));
 }
 
 /**

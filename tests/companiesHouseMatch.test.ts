@@ -53,6 +53,19 @@ test("matchSponsorToCompaniesHouse: a low-similarity search hit is not treated a
   assert.equal(result.confidence, 0);
 });
 
+test("matchSponsorToCompaniesHouse: legal-suffix/punctuation cosmetic differences don't block an otherwise-unambiguous match", async () => {
+  // "Smith & Sons Builders" vs Companies House's own "SMITH AND SONS BUILDERS LIMITED" is
+  // the same organisation - only "&" vs "AND" and a trailing "LIMITED" differ, both purely
+  // cosmetic (see buildMatchKey). Before normalising the two names before scoring, this
+  // combination scored just under CONFIDENT_THRESHOLD and was silently left "unmatched".
+  const resolver = async () =>
+    lookup({ matchedCompanyNumber: "55555555", matchedCompanyName: "SMITH AND SONS BUILDERS LIMITED", companyStatus: "active" });
+  const result = await matchSponsorToCompaniesHouse(["Smith & Sons Builders"], resolver);
+  assert.equal(result.divergent, false);
+  assert.equal(result.bestMatch?.matchedCompanyNumber, "55555555");
+  assert.equal(result.confidence, 1, "normalising away LTD/AND/&/punctuation should make this an exact match");
+});
+
 test("matchSponsorToCompaniesHouse: no search results at all resolves to unknown, not an error", async () => {
   const resolver = async () => lookup();
   const result = await matchSponsorToCompaniesHouse(["Some Obscure Sponsor Ltd"], resolver);
