@@ -39,7 +39,16 @@ async function getFreshCacheEntry(queryName: string) {
     .where(and(eq(companiesHouseCache.queryName, queryName), gt(companiesHouseCache.expiresAt, sql`now()`)))
     .orderBy(desc(companiesHouseCache.fetchedAt))
     .limit(1);
-  return rows[0] ?? null;
+  const row = rows[0] ?? null;
+  if (!row) return null;
+  // A row written before incorporatedAt/registeredOffice/companyType existed on this table
+  // has a real match (matchedCompanyNumber set) but all three profile fields null - not
+  // distinguishable from "genuinely has no profile data" by column value alone. Treating it
+  // as fresh would silently perpetuate the gap for its full 30-day TTL, since a match writes
+  // whatever resolveCompanyForName returns straight back onto the sponsor row. Force a
+  // miss so it re-fetches once and gets backfilled for real.
+  const looksPreMigration = row.matchedCompanyNumber !== null && !row.incorporatedAt && !row.registeredOffice && !row.companyType;
+  return looksPreMigration ? null : row;
 }
 
 /**
