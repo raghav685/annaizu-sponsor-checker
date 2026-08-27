@@ -131,6 +131,31 @@ export async function runSync(): Promise<SyncOutcome> {
     return { status: "no_change", runId: row.id };
   }
 
+  // A hard Vercel function timeout (this route's maxDuration is 60s) kills the process
+  // mid-flight - no catch/finally runs, so a killed run's syncRuns row is stuck at
+  // status='running' forever. sync_runs_one_running_uidx then permanently blocks every
+  // future sync (including tomorrow's cron) with "Could not start a new sync run" until
+  // someone fixes it by hand - confirmed as a real, repeat failure mode (it happened once
+  // before in this repo's history, and again live during this session, from a timeout most
+  // likely caused by concurrent crawler traffic contending for Aiven's connection limit
+  // alongside this route's queries). This route can never legitimately still be running
+  // more than a few minutes after it started, so any row past that age is unambiguously
+  // abandoned, not a genuine concurrent run - auto-resolve it instead of requiring a human
+  // to notice and run a manual UPDATE.
+  const STALE_RUNNING_MINUTES = 5;
+  const staleRunning = await db.query.syncRuns.findFirst({ where: eq(syncRuns.status, "running") });
+  if (staleRunning && Date.now() - new Date(staleRunning.startedAt).getTime() > STALE_RUNNING_MINUTES * 60_000) {
+    await db
+      .update(syncRuns)
+      .set({
+        status: "failed",
+        finishedAt: new Date(),
+        errorMessage: `Auto-resolved: row was stuck at status='running' for over ${STALE_RUNNING_MINUTES} minutes - almost certainly killed by this route's 60s function timeout mid-run, not a genuine still-active sync.`,
+      })
+      .where(eq(syncRuns.id, staleRunning.id));
+    console.warn(`[sync] Auto-resolved stale "running" run ${staleRunning.id} (started ${new Date(staleRunning.startedAt).toISOString()}) before starting a new one.`);
+  }
+
   let run: typeof syncRuns.$inferSelect;
   try {
     const [inserted] = await db
