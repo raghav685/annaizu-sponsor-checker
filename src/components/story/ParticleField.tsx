@@ -11,13 +11,10 @@ function Field({ count, reduced }: { count: number; reduced: boolean }) {
   const materialRef = useRef<THREE.PointsMaterial>(null);
   const targetIntensity = useRef(1);
 
-  const sponsorsLoaded = useExplorerStore((s) => s.sponsors !== null);
-  const resultCount = useExplorerStore((s) => s.result.ids.length);
+  // The homepage story never filters the register (that only happens on /sponsors), so this
+  // is always "nothing filtered out" - full intensity.
   const totalCount = useExplorerStore((s) => s.globalStats?.totalSponsors ?? 1);
-  // The homepage story never loads the full per-sponsor array (no filtering
-  // happens there) - without this, the field would sit at half-intensity
-  // forever instead of the "nothing filtered out" full intensity it should read as.
-  const effectiveResultCount = sponsorsLoaded ? resultCount : totalCount;
+  const effectiveResultCount = totalCount;
 
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);

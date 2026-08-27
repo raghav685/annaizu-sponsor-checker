@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useExplorerStore } from "@/lib/store";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ALL_REGIONS, ALL_SECTORS, RATING_OPTIONS, SPONSOR_TYPE_OPTIONS, SORT_OPTIONS, routeGroupOf } from "@/lib/constants";
@@ -10,6 +10,8 @@ import { CheckboxRow, FieldsetGroup, SegmentedControl, ToggleSwitch } from "@/co
 import { TypeaheadMultiSelect } from "@/components/ui/TypeaheadMultiSelect";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import { exportSponsorsCsv } from "@/lib/export";
+import { filtersToParams } from "@/lib/filterState";
+import type { Sponsor } from "@/lib/types";
 import { X } from "@phosphor-icons/react/dist/csr/X";
 
 export function Sidebar() {
@@ -19,33 +21,27 @@ export function Sidebar() {
   const resetFilters = useExplorerStore((s) => s.resetFilters);
   const globalStats = useExplorerStore((s) => s.globalStats);
   const resultStats = useExplorerStore((s) => s.result.stats);
-  const sponsors = useExplorerStore((s) => s.sponsors);
-  const sponsorsById = useExplorerStore((s) => s.sponsorsById);
-  const resultIds = useExplorerStore((s) => s.result.ids);
+  const townFacets = useExplorerStore((s) => s.townFacets);
+  const countyFacets = useExplorerStore((s) => s.countyFacets);
+  const setFacets = useExplorerStore((s) => s.setFacets);
   const sidebarOpen = useExplorerStore((s) => s.sidebarOpen);
   const setSidebarOpen = useExplorerStore((s) => s.setSidebarOpen);
   const isDrawerViewport = useMediaQuery("(max-width: 1023px)");
   const drawerClosed = isDrawerViewport && !sidebarOpen;
+  const [exporting, setExporting] = useState(false);
 
   const stats = resultStats ?? globalStats;
 
-  const townOptions = useMemo(() => {
-    if (!sponsors) return [];
-    const m = new Map<string, number>();
-    for (const s of sponsors) if (s.town) m.set(s.town, (m.get(s.town) ?? 0) + 1);
-    return Array.from(m.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => ({ name, count }));
-  }, [sponsors]);
+  useEffect(() => {
+    fetch("/api/data/facets")
+      .then((r) => r.json() as Promise<{ towns: { name: string; count: number }[]; counties: { name: string; count: number }[] }>)
+      .then(setFacets)
+      .catch((err) => console.error("Failed to load town/county facets", err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const countyOptions = useMemo(() => {
-    if (!sponsors) return [];
-    const m = new Map<string, number>();
-    for (const s of sponsors) if (s.county) m.set(s.county, (m.get(s.county) ?? 0) + 1);
-    return Array.from(m.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => ({ name, count }));
-  }, [sponsors]);
+  const townOptions = useMemo(() => townFacets.map((f) => ({ name: f.name, count: f.count })), [townFacets]);
+  const countyOptions = useMemo(() => countyFacets.map((f) => ({ name: f.name, count: f.count })), [countyFacets]);
 
   const routesByGroup = useMemo(() => {
     const byRoute = stats?.byRoute ?? {};
@@ -67,10 +63,22 @@ export function Sidebar() {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
   }
 
+  // A deliberate bulk export, distinct from paginated browsing - fetches every matching row
+  // in one request (server-capped, see /api/data/sponsors's MAX_EXPORT_ROWS) rather than the
+  // page-at-a-time results the table itself shows.
   function handleExport() {
-    if (!sponsorsById) return;
-    const rows = resultIds.map((id) => sponsorsById.get(id)).filter((s): s is NonNullable<typeof s> => Boolean(s));
-    exportSponsorsCsv(rows);
+    if (exporting) return;
+    setExporting(true);
+    const params = filtersToParams(filters);
+    params.set("all", "1");
+    fetch(`/api/data/sponsors?${params.toString()}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Request failed (${r.status})`);
+        return r.json() as Promise<{ rows: Sponsor[] }>;
+      })
+      .then((data) => exportSponsorsCsv(data.rows))
+      .catch((err) => console.error("Failed to export sponsors CSV", err))
+      .finally(() => setExporting(false));
   }
 
   return (
@@ -262,9 +270,10 @@ export function Sidebar() {
             </button>
             <button
               onClick={handleExport}
-              className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-white/[0.03] py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal"
+              disabled={exporting}
+              className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-white/[0.03] py-2 font-mono text-xs text-mist transition-colors hover:border-signal/40 hover:text-signal disabled:pointer-events-none disabled:opacity-50"
             >
-              Export CSV
+              {exporting ? "Exporting…" : "Export CSV"}
             </button>
           </div>
           <div className="pb-3" />

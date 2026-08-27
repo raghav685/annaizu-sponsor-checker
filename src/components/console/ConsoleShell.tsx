@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useExplorerStore } from "@/lib/store";
-import { useFilterWorker } from "@/hooks/useFilterWorker";
+import { useSponsorsQuery } from "@/hooks/useSponsorsQuery";
 import { Sidebar } from "./Sidebar";
 import { SearchBar } from "./SearchBar";
 import { ActiveFilterChips } from "./ActiveFilterChips";
@@ -24,16 +24,12 @@ const STATUS_TABS = [
 ] as const;
 
 export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
-  useFilterWorker();
   const [statusTab, setStatusTab] = useState<(typeof STATUS_TABS)[number]["key"]>("active");
-  const rawResultIds = useExplorerStore((s) => s.result.ids);
-  const sponsorsById = useExplorerStore((s) => s.sponsorsById);
+  useSponsorsQuery(statusTab === "revoked" ? undefined : statusTab);
+
+  const result = useExplorerStore((s) => s.result);
+  const isLoading = useExplorerStore((s) => s.isLoading);
   const totalCount = useExplorerStore((s) => s.globalStats?.totalSponsors ?? 0);
-  const sponsorsLoaded = useExplorerStore((s) => s.sponsors !== null);
-  const resultCount = useMemo(
-    () => (statusTab === "revoked" ? rawResultIds.length : rawResultIds.filter((id) => sponsorsById?.get(id)?.status === statusTab).length),
-    [rawResultIds, sponsorsById, statusTab]
-  );
 
   return (
     <main className="relative z-content flex min-h-[100dvh] bg-void">
@@ -73,9 +69,9 @@ export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
                 <SearchBar />
               </div>
               <p aria-live="polite" className="mt-3 font-mono text-xs text-mist-dim">
-                {sponsorsLoaded ? (
+                {!isLoading ? (
                   <>
-                    <span className="text-signal">{formatNumber(resultCount)}</span> of {formatNumber(totalCount)} sponsors
+                    <span className="text-signal">{formatNumber(result.total)}</span> of {formatNumber(totalCount)} sponsors
                   </>
                 ) : (
                   "loading register..."
@@ -93,7 +89,7 @@ export function ConsoleShell({ kpi }: { kpi: KpiSummary | null }) {
           aria-labelledby={`status-tab-${statusTab}`}
           className="h-[32rem] xl:h-[calc(100dvh-11rem)]"
         >
-          {statusTab === "revoked" ? <RemovedSponsorsPanel /> : <ResultsGrid statusFilter={statusTab} />}
+          {statusTab === "revoked" ? <RemovedSponsorsPanel /> : <ResultsGrid />}
         </div>
         <div className="space-y-6 border-t border-hairline pt-5">
           <h2 className="font-mono text-xs uppercase tracking-wide text-mist-dim">Register insights</h2>

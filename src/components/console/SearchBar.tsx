@@ -9,8 +9,7 @@ import { List } from "@phosphor-icons/react/dist/csr/List";
 export function SearchBar() {
   const filters = useExplorerStore((s) => s.filters);
   const setFilters = useExplorerStore((s) => s.setFilters);
-  const resultIds = useExplorerStore((s) => s.result.ids);
-  const sponsorsById = useExplorerStore((s) => s.sponsorsById);
+  const resultRows = useExplorerStore((s) => s.result.rows);
   const setSidebarOpen = useExplorerStore((s) => s.setSidebarOpen);
   const inputRef = useRef<HTMLInputElement>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -28,13 +27,7 @@ export function SearchBar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const suggestions =
-    filters.search.trim() && sponsorsById
-      ? resultIds
-          .slice(0, 8)
-          .map((id) => sponsorsById.get(id))
-          .filter((s): s is NonNullable<typeof s> => Boolean(s))
-      : [];
+  const suggestions = filters.search.trim() ? resultRows.slice(0, 8) : [];
 
   return (
     <div className="relative min-w-0 flex-1">
