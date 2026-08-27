@@ -42,13 +42,19 @@ async function getFreshCacheEntry(queryName: string) {
   const row = rows[0] ?? null;
   if (!row) return null;
   // A row written before incorporatedAt/registeredOffice/companyType existed on this table
-  // has a real match (matchedCompanyNumber set) but all three profile fields null - not
-  // distinguishable from "genuinely has no profile data" by column value alone. Treating it
-  // as fresh would silently perpetuate the gap for its full 30-day TTL, since a match writes
-  // whatever resolveCompanyForName returns straight back onto the sponsor row. Force a
-  // miss so it re-fetches once and gets backfilled for real.
-  const looksPreMigration = row.matchedCompanyNumber !== null && !row.incorporatedAt && !row.registeredOffice && !row.companyType;
-  return looksPreMigration ? null : row;
+  // has a real match (matchedCompanyNumber set) but null profile fields - not distinguishable
+  // from "genuinely has no profile data" by column value alone. Treating it as fresh would
+  // silently perpetuate the gap for its full 30-day TTL, since a match writes whatever
+  // resolveCompanyForName returns straight back onto the sponsor row. Force a miss so it
+  // re-fetches once and gets backfilled for real.
+  //
+  // companyType specifically (not incorporatedAt/registeredOffice) also catches rows written
+  // during the brief window this session had the wrong Companies House API field name
+  // (`company_type` instead of the real `type`) - confirmed live: 3 sponsors matched in that
+  // window have a real incorporatedAt but companyType stuck null. `type` is present on every
+  // real company profile CH returns, so a matched row missing only it is never legitimate.
+  const looksIncomplete = row.matchedCompanyNumber !== null && !row.companyType;
+  return looksIncomplete ? null : row;
 }
 
 /**
@@ -79,7 +85,7 @@ export async function resolveCompanyForName(queryName: string): Promise<CachedLo
 
   const incorporatedAt = profile?.date_of_creation ?? null;
   const registeredOffice = formatRegisteredOffice(profile?.registered_office_address);
-  const companyType = profile?.company_type ?? null;
+  const companyType = profile?.type ?? null;
 
   await db.insert(companiesHouseCache).values({
     queryName,

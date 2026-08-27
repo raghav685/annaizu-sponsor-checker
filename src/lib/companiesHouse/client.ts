@@ -17,7 +17,10 @@ export interface CompanyProfile {
   company_number: string;
   company_name: string;
   company_status: string; // 'active' | 'dissolved' | 'liquidation' | 'administration' | 'receivership' | 'voluntary-arrangement' | ...
-  company_type?: string; // 'ltd' | 'plc' | 'llp' | 'community-interest-company' | ...
+  // Confirmed against Companies House's own companyProfile resource schema
+  // (developer-specs.company-information.service.gov.uk) - the field is genuinely just
+  // `type`, not `company_type` like company_status/company_number/company_name would suggest.
+  type?: string; // 'ltd' | 'plc' | 'llp' | 'community-interest-company' | ...
   date_of_creation?: string; // incorporation date, YYYY-MM-DD
   sic_codes?: string[];
   date_of_cessation?: string;
