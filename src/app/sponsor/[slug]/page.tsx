@@ -12,6 +12,16 @@ import { buildMetadata } from "@/lib/seo";
 const GOV_UK_REGISTER_URL = "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers";
 const ANNAIZU_URL = "https://www.annaizu.com/";
 
+// No generateStaticParams (127k+ sponsors would massively bloat build time/output - see
+// browse/city/[city]'s same tradeoff), but this was missing even the fallback ISR caching
+// every other dynamic-data route already has (browse pages, meta/stats: all revalidate=300).
+// Without it, every single sponsor page view - including bulk crawler traffic walking the
+// whole sitemap, confirmed live via runtime logs showing 2,756+ distinct /sponsor/[slug]
+// paths hit in one day - was a full uncached server render + DB round trip, forever. Sponsor
+// data only changes once a day (the register sync), so 5 minutes of staleness costs nothing
+// real and this was a significant, unnecessary contributor to Vercel Fluid Active CPU usage.
+export const revalidate = 300;
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
